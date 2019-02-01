@@ -2,6 +2,10 @@
 
 Organisation is the driver of great achievements
 
+[![Build Status](https://travis-ci.com/MattAdote/nyikes_rms.svg?token=Ry3JQbWPQTsKSQdKfwjr&branch=develop)](https://travis-ci.com/MattAdote/nyikes_rms)
+
+[![Coverage Status](https://coveralls.io/repos/github/MattAdote/nyikes_rms/badge.svg?branch=develop)](https://coveralls.io/github/MattAdote/nyikes_rms?branch=develop)
+
 ## Project Overview
 
 Nyikes RMS is a computerized records management system for the Nyikes.
