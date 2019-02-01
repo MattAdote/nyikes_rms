@@ -19,7 +19,7 @@ It was created to make it easier for the Nyikes to keep track of it's records re
 
 ## Getting started
 
-This guide addresses the REST API server component of Nyikes RMS
+This guide addresses the REST API server component of Nyikes RMS.
 
 ### Installation
 
@@ -67,6 +67,17 @@ $ flask run
 
 The api server is now running locally and can be reached on: `http://localhost:5000/`
 
+## Heroku
+
+Nyikes RMS is hosted on heroku as well at `https://nyikes-rms.herokuapp.com/` i.e. [here](https://nyikes-rms.herokuapp.com/)
+
+As no content has been configured yet to be displayed, you will see a Not found message i.e.
+> **Not Found**
+>
+> The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+
+Do not be alarmed. Something shall be setup in due time.
+
 ## Testing
 
 1. Source code unit tests
@@ -81,16 +92,31 @@ The api server is now running locally and can be reached on: `http://localhost:5
         ```
 
 2. API Endpoints functionality  
-    You can use [Postman](https://www.getpostman.com/) to test the endpoints
+    You can use [Postman](https://www.getpostman.com/) to test the endpoints.
 
 ## Endpoints
 
 This is an evolving section.
-The endpoints spec is currently in development
+The endpoints spec is currently in development.
+
+The endpoint prefix is `api/v1`
+
+The full url to access an endpoint takes the form:
+> [server_url] / [endpoint_prefix] / [endpoint]
+
+i.e if on localhost, the url is `http://localhost:5000/api/v1/[endpoint]`
+
+or if on heroku, the url is `https://nyikes-rms.herokuapp.com/api/v1/[endpoint]`
+
+**Note** :  the [endpoint] provides the slash '/' after the [endpoint_prefix] thus,
+            the [endpoint] = / means the root endpoint with no need for two slashes after
+            the [endpoint_prefix]
+
+### Available endpoints
 
 | Request Method       | EndPoint       | Functionality |
 | ------------- | ------------- | ---------------
-| GET  | `/api/v1/`  | Landing page for backend  |
+| GET  | `/`  | "Landing page" for the REST API server |
 
 ## Acknowledgements
 
