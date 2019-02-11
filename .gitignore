@@ -105,3 +105,6 @@ venv.bak/
 
 # VS Code
 .vscode/
+
+# Custom
+db/phpmyadmin_db_layout_nyikes_rms_08Feb20191707.png
