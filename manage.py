@@ -5,7 +5,7 @@ from flask_migrate import Migrate, MigrateCommand
 
 # local imports
 from app import db, create_api_server
-from app.api.v1.models.sa_models import * # import models
+from app.api.v1.models.dbmodels import * # import models
 
 
 app = create_api_server(config_name=os.getenv('APP_SETTINGS'))
