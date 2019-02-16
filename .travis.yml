@@ -19,8 +19,8 @@ before_install:
 before_script:
   - psql -c 'create database travisci;' -U postgres
   - psql -c 'create database test_travisci;' -U postgres
-  - python manage.py db migrate
-  - python manage.py db upgrade
+  - python manage.py db migrate --noinput
+  # - python manage.py db upgrade
 
 script:
   - py.test --cov=app && coverage report
