@@ -3,13 +3,10 @@ language: python
 python:
   - "3.5.5"
 
-# services: postgresql
-
 addons:
-  postgresql: "10.6"
+  postgresql: "9.6" # prod server uses 10.6 which = dev server
 
 env:
-#  - DATABASE_URL=postgres://postgres:@localhost/travisci
   global:
     - TEST_DATABASE_URL=postgres://postgres:@localhost/test_travisci
 
@@ -18,11 +15,7 @@ before_install:
     - pip install coveralls
 
 before_script:
-  # - psql -c 'create database travisci;' -U postgres
   - psql -c 'create database test_travisci;' -U postgres
-  # - python manage.py db init
-  # - python manage.py db migrate
-  # - python manage.py db upgrade
 
 script:
   - py.test --cov=app && coverage report
