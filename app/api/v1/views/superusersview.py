@@ -1,3 +1,5 @@
+import requests
+
 # project specific imports
 from flask import Blueprint, request, jsonify, make_response
 
@@ -93,6 +95,58 @@ def superuser_validate_request_data(req_data):
 def superuser():
     """ The superuser view for the API Server"""
     
+    response = {
+        'status': 200,
+        'data': []
+    }
+
+    return make_response(jsonify(response), response['status'])
+
+@superusers_view_blueprint.route('/superusers/login/account_kit', methods=['POST'])
+def login_superuser_account_kit():
+    """ Logs in a superuser via Facebook Account Kit """
+    pass
+
+@superusers_view_blueprint.route('/superusers/login', methods=['POST'])
+def login_superuser():
+    """ Logs in a superuser via Facebook Account Kit """
+
+    data = parse_request(request)
+    if type(data) == dict and 'error' in data:
+        return make_response(jsonify(data), data['status'])    
+
+    # required fields
+    app_id = '602045066941772'
+    redirect = 'https://nyikes-rms-stage.herokuapp.com/api/v1/superusers/login/account_kit'
+
+    state = 'this-is-meant-to-be-some-long-random-csrf-token-that-i-need-to-randomify'
+
+    # optional fields
+    # country_code = ;
+    # phone_number = ;
+    # email =;
+    debug = True
+    locale = 'en_GB'
+
+    if 'phone_number' in data:
+        facebook_api_url = "https://www.accountkit.com/v1.0/basic/dialog/sms_login/"
+        country_code = '254'
+        phone_number = data['phone_number']
+
+        fb_data = {
+            "app_id" : app_id,
+            "redirect" : redirect,
+            "state" : state,
+            "debug":debug,
+            "locale" : locale,
+            "country_code" : country_code,
+            "phone_number":phone_number
+        }
+        requests.post(facebook_api_url, data=fb_data)
+        
+    elif 'email' in data:
+        facebook_api_url = "https://www.accountkit.com/v1.0/basic/dialog/email_login/"
+
     response = {
         'status': 200,
         'data': []

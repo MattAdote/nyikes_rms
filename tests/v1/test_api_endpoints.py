@@ -86,6 +86,14 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertTrue(res.is_json, "Json not returned.")
         self.assertEqual(res.status_code, 200)
     
+    def test_endpoint_login_superusers_returns_json(self):
+        """Test API endpoint is reachable and returns json"""
+        
+        res = self.client.post('api/v1/superusers/login')       
+
+        self.assertTrue(res.is_json, "Json not returned.")
+        self.assertEqual(res.status_code, 200)
+    
     def tearDown(self):
         """teardown all initialized variables."""
         
