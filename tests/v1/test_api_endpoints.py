@@ -24,7 +24,7 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertTrue(res.is_json, "Json not returned.")
 
         self.assertEqual(res.status_code, 200)
-    
+        
     def test_endpoint_post_superuser_returns_json(self):
         """Test API endpoint is reachable and returns json"""
         
@@ -92,7 +92,50 @@ class TestApiEndpoints(unittest.TestCase):
         res = self.client.post('api/v1/superusers/login')       
 
         self.assertTrue(res.is_json, "Json not returned.")
-        self.assertEqual(res.status_code, 200)
+        if not 'error' in res.json:
+            self.assertEqual(res.status_code, 200)
+        else:
+            self.assertIn('error', res.json)
+
+    def test_endpoint_login_superusers_returns_superuser_record(self):
+        """Test API endpoint is reachable and returns json"""
+        # Expected json output data fields
+        expected_output_data_fields = ['id', 'username']
+
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        new_superuser = res_1.json['data']
+
+        # Login the superuser
+        input_2 = {
+                "username":new_superuser['username'],
+                "password":new_superuser['password']
+        }
+        res_2 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_2),
+            content_type = 'application/json'
+        )       
+
+        # Assert that all is well
+        self.assertTrue(res_2.is_json, "Json not returned.")
+        self.assertEqual(res_2.status_code, 200)
+        
+        self.assertIn('id', res_2.json['data'], "id attribute is missing")
+        self.assertIn('username', res_2.json['data'], "username attribute is missing")
+        self.assertTrue(all(key in res_2.json['data'].keys() for key in expected_output_data_fields),
+            "Received output data keys does not match Expected Output keys 100%"
+        )
+
     
     def tearDown(self):
         """teardown all initialized variables."""

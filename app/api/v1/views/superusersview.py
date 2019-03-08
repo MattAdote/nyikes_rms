@@ -80,13 +80,6 @@ def superuser_validate_request_data(req_data):
     # append required fields dictionary to sanitized_data list
     sanitized_data.append(dict_req_fields)
 
-    # get the required fields' data and put in own dictionary
-    for field in req_fields:
-        if field in received_data:
-            dict_req_fields.update({field: received_data[field]})
-    # append required fields dictionary to sanitized_data list
-    sanitized_data.append(dict_req_fields)
-
     # send sanitized_data list to actual validation function and return response
     return validate_request_data(sanitized_data, req_fields)
 
@@ -102,54 +95,84 @@ def superuser():
 
     return make_response(jsonify(response), response['status'])
 
-@superusers_view_blueprint.route('/superusers/login/account_kit', methods=['POST'])
-def login_superuser_account_kit():
-    """ Logs in a superuser via Facebook Account Kit """
-    pass
+# Commented out the below. This is to be the redirect url called by facebook
+# @superusers_view_blueprint.route('/superusers/login/account_kit', methods=['POST'])
+# def login_superuser_account_kit():
+#     """ Logs in a superuser via Facebook Account Kit """
+#     data = parse_request(request)
+#     if type(data) == dict and 'error' in data:
+#         return make_response(jsonify(data), data['status']) 
+
+#     if request:
+#         print('Called my guys')
+
+#         # required fields
+#         app_id = '602045066941772'
+#         redirect = 'https://nyikes-rms-stage.herokuapp.com/api/v1/superusers/login/account_kit'
+#         state = 'this-is-meant-to-be-some-long-random-csrf-token-that-i-need-to-randomify'
+#         # optional fields    
+#         debug = True
+#         locale = 'en_GB'
+        
+#         fb_data = {
+#                 "app_id" : app_id,
+#                 "redirect" : redirect,
+#                 "state" : state,
+#                 "debug":debug,
+#                 "locale" : locale
+#         }
+#         if 'phone_number' in data:
+#             facebook_api_url = "https://www.accountkit.com/v1.1/basic/dialog/sms_login/"
+#             country_code = '254'
+#             phone_number = data['phone_number']
+
+#             fb_data.update({
+#                 "country_code" : country_code,
+#                 "phone_number": phone_number
+#             })
+#             requests.post(facebook_api_url, data=fb_data)
+#         elif 'email' in data:
+#             facebook_api_url = "https://www.accountkit.com/v1.0/basic/dialog/email_login/"
+#             fb_data.update({
+#                 "email" : data['email']
+#             })
+#             requests.post(facebook_api_url, data=fb_data)
 
 @superusers_view_blueprint.route('/superusers/login', methods=['POST'])
 def login_superuser():
-    """ Logs in a superuser via Facebook Account Kit """
+    """ Logs in a superuser """
 
     data = parse_request(request)
     if type(data) == dict and 'error' in data:
         return make_response(jsonify(data), data['status'])    
 
-    # required fields
-    app_id = '602045066941772'
-    redirect = 'https://nyikes-rms-stage.herokuapp.com/api/v1/superusers/login/account_kit'
+    # Specify the required fields
+    request_data = []
+    req_fields = ['username', 'password']
 
-    state = 'this-is-meant-to-be-some-long-random-csrf-token-that-i-need-to-randomify'
+    # check validity of request data
+    request_data.append(data)
+    res_valid_data = validate_request_data(request_data, req_fields)
 
-    # optional fields
-    # country_code = ;
-    # phone_number = ;
-    # email =;
-    debug = True
-    locale = 'en_GB'
-
-    if 'phone_number' in data:
-        facebook_api_url = "https://www.accountkit.com/v1.0/basic/dialog/sms_login/"
-        country_code = '254'
-        phone_number = data['phone_number']
-
-        fb_data = {
-            "app_id" : app_id,
-            "redirect" : redirect,
-            "state" : state,
-            "debug":debug,
-            "locale" : locale,
-            "country_code" : country_code,
-            "phone_number":phone_number
-        }
-        requests.post(facebook_api_url, data=fb_data)
-        
-    elif 'email' in data:
-        facebook_api_url = "https://www.accountkit.com/v1.0/basic/dialog/email_login/"
-
-    response = {
-        'status': 200,
-        'data': []
-    }
+    # process data if valid, else, return validation findings
+    if data == res_valid_data:
+        su = SuperUser.query.filter_by(username=data['username'], password=data['password']).first()
+        if su:
+            su_record = superuser_schema.dump(su).data
+            # remove password attr as not expected in endpoint output
+            su_record.pop('password')
+            response = {
+                'status': 200,
+                'data': su_record
+            }
+        else:
+            response = {
+                'status': 403,
+                'error': 'Invalid credentials supplied'
+            }
+    else:
+        # return error from validation findings
+        response = endpoint_error_response(data, res_valid_data)
 
     return make_response(jsonify(response), response['status'])
+    
