@@ -141,38 +141,88 @@ def superuser():
 @superusers_view_blueprint.route('/superusers/login', methods=['POST'])
 def login_superuser():
     """ Logs in a superuser """
+    
+    # the flow:
+    # 1. validate the received data
+    # if not valid return error message
+    # 2. verify supplied credentials
+    # if verification fails, return error message
+    # 3. start a new session
+    # - first check if there's existing session and end it
+    # - start new session
+    # - produce the signing key for the new session
+    # 4. Generate a token and sign it with the new session's
+    # signing key (output of step 3 above)
+    # 5. Return:
+    # - id and username in json body
+    # - token in header with the following payload:
+    #    - id : superuser_id
+    #    - type : super
+    #    - iat : datetime
+    #    - exp : datetime within 6 hours
 
+    # 1. Validate received data
+    # check request content type
     data = parse_request(request)
     if type(data) == dict and 'error' in data:
         return make_response(jsonify(data), data['status'])    
-
-    # Specify the required fields
+    # check validity of request data
     request_data = []
     req_fields = ['username', 'password']
-
-    # check validity of request data
     request_data.append(data)
     res_valid_data = validate_request_data(request_data, req_fields)
-
+    
     # process data if valid, else, return validation findings
     if data == res_valid_data:
-        su = SuperUser.query.filter_by(username=data['username'], password=data['password']).first()
-        if su:
-            su_record = superuser_schema.dump(su).data
-            # remove password attr as not expected in endpoint output
-            su_record.pop('password')
-            response = {
-                'status': 200,
-                'data': su_record
-            }
-        else:
-            response = {
-                'status': 403,
-                'error': 'Invalid credentials supplied'
-            }
+        # 2. Verify supplied credentials
+        su = verify_credentials(data)
+        if type(su) == dict and 'error' in su:
+            return make_response(jsonify(su), su['status'])
+        # su = SuperUser.query.filter_by(username=data['username'], password=data['password']).first()
+        # if su:
+        #     su_record = superuser_schema.dump(su).data
+        #     # remove password attr as not expected in endpoint output
+        #     su_record.pop('password')
+        #     response = {
+        #         'status': 200,
+        #         'data': su_record
+        #     }
+        # else:
+        #     response = {
+        #         'status': 403,
+        #         'error': 'Invalid credentials supplied'
+        #     }
     else:
         # return error from validation findings
         response = endpoint_error_response(data, res_valid_data)
 
     return make_response(jsonify(response), response['status'])
     
+
+def verify_credentials(dict_credentials):
+    """
+        Takes a dict of username and password for verification
+
+        Returns Superuser object if verification successful
+        else, returns an error message
+    """
+    response = {}
+    su_username = SuperUser.query.filter_by(username=dict_credentials['username']).first()
+    if su_username:
+        su = SuperUser.query.filter_by(
+                username=dict_credentials['username'],
+                password=dict_credentials['password'],
+            ).first()
+        if su:
+            return su
+        else:
+            response = {
+                'status': 403,
+                'error': 'Incorrect Password!'
+            }
+    else:
+        response = {
+            'status': 403,
+            'error': 'Username: {} not found'.format(dict_credentials['username'])
+        }
+    return response
