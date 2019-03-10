@@ -1,4 +1,6 @@
-import requests
+import  datetime, \
+        jwt, \
+        requests
 
 # project specific imports
 from flask import Blueprint, request, jsonify, make_response
@@ -141,26 +143,11 @@ def superuser():
 @superusers_view_blueprint.route('/superusers/login', methods=['POST'])
 def login_superuser():
     """ Logs in a superuser """
+    # data = {
+    #             "username": "test_user", required
+    #             "password": "123", required
+    #         }   
     
-    # the flow:
-    # 1. validate the received data
-    # if not valid return error message
-    # 2. verify supplied credentials
-    # if verification fails, return error message
-    # 3. start a new session
-    # - first check if there's existing session and end it
-    # - start new session
-    # - produce the signing key for the new session
-    # 4. Generate a token and sign it with the new session's
-    # signing key (output of step 3 above)
-    # 5. Return:
-    # - id and username in json body
-    # - token in header with the following payload:
-    #    - id : superuser_id
-    #    - type : super
-    #    - iat : datetime
-    #    - exp : datetime within 6 hours
-
     # 1. Validate received data
     # check request content type
     data = parse_request(request)
@@ -178,20 +165,21 @@ def login_superuser():
         su = verify_credentials(data)
         if type(su) == dict and 'error' in su:
             return make_response(jsonify(su), su['status'])
-        # su = SuperUser.query.filter_by(username=data['username'], password=data['password']).first()
-        # if su:
-        #     su_record = superuser_schema.dump(su).data
-        #     # remove password attr as not expected in endpoint output
-        #     su_record.pop('password')
-        #     response = {
-        #         'status': 200,
-        #         'data': su_record
-        #     }
-        # else:
-        #     response = {
-        #         'status': 403,
-        #         'error': 'Invalid credentials supplied'
-        #     }
+        # 3. Start a new session and get session_key
+        session_secret_key = start_session(su)
+        if type(session_secret_key) == dict and 'error' in session_secret_key:
+            return make_response(jsonify(session_secret_key), session_secret_key['status'])
+        # 4. Generate token
+        token = generate_token(su, session_secret_key)
+        # 5. Return 
+        su_record = superuser_schema.dump(su).data
+        su_record.pop('password') # remove password attr as not expected in endpoint output
+        su_record.update({"user_token": token.decode('UTF-8')}) # append user token
+        response = {
+            'status': 200,
+            'data': su_record,
+        }
+        
     else:
         # return error from validation findings
         response = endpoint_error_response(data, res_valid_data)
@@ -226,3 +214,66 @@ def verify_credentials(dict_credentials):
             'error': 'Username: {} not found'.format(dict_credentials['username'])
         }
     return response
+
+def start_session(obj_superuser):
+    """
+        Starts a new session for the given superuser
+        
+        Returns string output which is the secret key to sign
+        the token to be generated
+    """
+    # First check if there're pre-existing sessions and log them out
+    if obj_superuser.lastLoggedIn > obj_superuser.lastLoggedOut:
+        response = end_session(obj_superuser)
+        if 'error' in response:
+            return response
+
+    # Next, update the user's log in time and return lastLoggedOut time as string.
+    # The lastLoggedOut is the user's secret key used to sign their token
+    try:
+        obj_superuser.lastLoggedIn = datetime.datetime.now().strftime("%Y-%b-%d %H:%M:%S")
+        obj_superuser.save()
+    except:
+        response = {
+            "status":503,
+            "error": "Unable to save to db."
+        }
+        return response
+    return "{:%Y-%b-%d %H:%M:%S}".format(obj_superuser.lastLoggedOut)
+
+def end_session(obj_superuser):
+    """
+        Ends a session for the given superuser
+    """
+    try:
+        obj_superuser.lastLoggedOut = datetime.datetime.now().strftime("%Y-%b-%d %H:%M:%S")
+        obj_superuser.save()
+    except:
+        response = {
+            "status":503,
+            "error": "Unable to save to db."
+        }
+        return response
+    return True
+
+def generate_token(obj_superuser, secret_key):
+    """
+        Generates a jwt token
+
+        :param obj_superuser
+        :param secret_key
+
+        :returns jwt encoded token
+    """
+
+    token = jwt.encode(
+        {
+            "id": obj_superuser.id,
+            "username":obj_superuser.username,
+            "type":"super",
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=180)
+        },
+        secret_key
+    )
+
+    return token

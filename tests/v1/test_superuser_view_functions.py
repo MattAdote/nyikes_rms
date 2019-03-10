@@ -1,11 +1,11 @@
 import unittest
-import os
+import os, datetime, jwt
 import json, pdb
 
 from .contexts import   create_api_server, db, \
                         BaseModel, \
                         SuperUser, superuser_schema, \
-                        verify_credentials
+                        verify_credentials, start_session, end_session, generate_token
 
 class TestSuperuserViewFunctions(unittest.TestCase):
     """This class represents the superuser view functions test case"""
@@ -17,6 +17,9 @@ class TestSuperuserViewFunctions(unittest.TestCase):
         self.client = self.app.test_client()
         self.superuser = SuperUser
         self.verify_credentials = verify_credentials
+        self.start_session = start_session
+        self.end_session = end_session
+        self.generate_token = generate_token
 
         # binds the app to the current context
         with self.app.app_context():
@@ -100,7 +103,142 @@ class TestSuperuserViewFunctions(unittest.TestCase):
         self.assertIn('status', output)
         self.assertIn('error', output)
         self.assertEqual(expected_status_code, output['status'], "Expected status code not returned")
-        self.assertIn(expected_error_msg, output['error'], "Expected error message not returned")      
+        self.assertIn(expected_error_msg, output['error'], "Expected error message not returned")
+
+    # def test_function_start_session_A_sets_lastLoggedIn_attr(self):
+    #     """ Tests that the function to start a session sets the lastLoggedIn attr"""
+    
+    #     # the flow:
+    #     # create a superuser record
+    #     # get a superuser object from the returned record
+    #     # set the old lastLoggedIn attr to one of my own
+    #     # start a new session
+    #     # confirm that the lastLoggedIn attr has changed by comparing it with the current value
+
+    #     # First, create a new superuser record
+    #     input_1 = {
+    #                 "username": "test_superuser",
+    #                 "password": "super123"                
+    #     }
+    #     res_1 = self.client.post(
+    #         'api/v1/superusers',
+    #         data = json.dumps(input_1),
+    #         content_type = 'application/json'
+    #     )
+
+    #     lastLoggedIn_to_set = "2019-Jan-01 01:29:59"
+    #     with self.app.app_context():
+    #         obj_superuser = SuperUser.query.filter_by(
+    #             username=res_1.json['data']['username'],
+    #             password=res_1.json['data']['password']
+    #         ).first()
+    #         obj_superuser.lastLoggedIn = datetime.datetime.strptime(lastLoggedIn_to_set)
+    #         old_lastLoggedIn = obj_superuser.lastLoggedIn
+
+    #         self.start_session(obj_superuser)
+        
+    #     self.assertTrue(obj_superuser.lastLoggedIn > old_lastLoggedIn, 'Session Time not Greater than old time')
+
+    def test_function_start_session_B_persists_superuser_obj_with_new_lastLoggedIn_attr_to_db(self):
+        """ 
+            Tests that the function to start a session persists the superuser obj to db with
+            the new lastLoggedIn attribute    
+        """
+        # the flow:
+        # create a superuser record
+        # get a superuser object from the returned record
+        # set the old lastLoggedIn attr to one of my own
+        # start a new session
+        # confirm that the objet is saved by retrieving it from db
+        # compare the db value with the earlier object to check that they match
+
+        # First, create a new superuser record
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+
+        with self.app.app_context():
+            obj_superuser = SuperUser.query.get(res_1.json['data']['id'])
+            self.start_session(obj_superuser)
+            db_obj_superuser = SuperUser.query.filter_by(
+                username=res_1.json['data']['username'],
+                password=res_1.json['data']['password']
+            ).first()
+
+        self.assertEqual(db_obj_superuser.lastLoggedIn, obj_superuser.lastLoggedIn, "DB and Object Not Equal")
+    
+    def test_function_start_session_C_returns_lastLoggedOut_attr_as_string(self):
+        """ Tests that the function to start a session returns the lastLoggedOut attr"""
+        # First, create a new superuser record
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        with self.app.app_context():
+            obj_superuser = SuperUser.query.get(res_1.json['data']['id'])
+            output = self.start_session(obj_superuser)
+
+        assert(type(output) == str)
+    
+    def test_function_end_session_returns_bool_True_on_success(self):
+        """ Tests that the function to end a session returns the boolean True"""
+        # First, create a new superuser record
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        with self.app.app_context():
+            # No need to start a session first because:
+            # 1. start_session() begins with ending all other sessions
+            # 2. end_session() just updates the log out time to now and returns true
+            # We're testing that the log out update is working
+            obj_superuser = SuperUser.query.get(res_1.json['data']['id'])
+            output = self.end_session(obj_superuser)
+
+
+        assert(type(output) == bool)
+        self.assertTrue(output)
+    
+    def test_function_generate_token_returns_jwt_token(self):
+        """ Tests that the function to generate a token returns a jwt token """
+
+        # the flow:
+        # supply secret as last logged out time of object
+        # call generate_token
+        # evaluate response to check that jwt.decode returns a dict
+
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        with self.app.app_context():
+            obj_superuser = SuperUser.query.get(res_1.json['data']['id'])
+            superuser_secret = self.start_session(obj_superuser)
+            token = self.generate_token(obj_superuser, superuser_secret)
+        decoded_token = jwt.decode(token, superuser_secret)
+        
+        assert(type(decoded_token) == dict)
 
     def tearDown(self):
         """teardown all initialized variables."""
