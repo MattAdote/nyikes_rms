@@ -3,11 +3,17 @@ import  datetime, \
         requests
 
 # project specific imports
-from flask import Blueprint, request, jsonify, make_response
+from flask import   Blueprint, request, jsonify, make_response, \
+                    current_app as app
 
 # local imports
-from app.api.v1.utils import validate_request_data, parse_request, check_is_empty, endpoint_error_response
+from app.api.v1.utils import    parse_request, validate_request_data, \
+                                check_is_empty, endpoint_error_response, \
+                                token_required
 from app.api.v1.models import SuperUser, superuser_schema
+
+DATE_FORMAT = "{:%Y-%b-%d %H:%M:%S}"
+TOKEN_EXPIRATION_MINUTES = 180
 
 # Define blueprint for meetup view
 superusers_view_blueprint = Blueprint('superusers_view', '__name__')
@@ -87,9 +93,30 @@ def superuser_validate_request_data(req_data):
 
 
 @superusers_view_blueprint.route('/superusers', methods=['GET'])
-def superuser():
+@token_required
+def superuser(**kwargs):
     """ The superuser view for the API Server"""
     
+    if len(kwargs) != 1:
+        response = { 
+            "status":403,
+            "error" : "args greater than 1. Supplied: {} ".format(kwargs.items())
+        }
+        return make_response(jsonify(response), response['status'])
+    
+    # Get user from db
+    obj_superuser = SuperUser.query.filter_by(username=kwargs['access_token']['username']).first()
+    user_secret = DATE_FORMAT.format(obj_superuser.lastLoggedOut)
+    
+    try:
+        token_data = jwt.decode(kwargs['access_token']['user_token'], user_secret)
+    except Exception as e:
+        response = {
+            "status" : 403,
+            "error" : str(e)
+        }
+        return make_response(jsonify(response), response['status'])
+
     response = {
         'status': 200,
         'data': []
@@ -169,8 +196,19 @@ def login_superuser():
         session_secret_key = start_session(su)
         if type(session_secret_key) == dict and 'error' in session_secret_key:
             return make_response(jsonify(session_secret_key), session_secret_key['status'])
-        # 4. Generate token
-        token = generate_token(su, session_secret_key)
+        # 4.1 Generate user token
+        user_token = generate_token(su, session_secret_key)
+        #4.2 Generate server token
+        token = jwt.encode(
+            {
+                "username":su.username,
+                "user_token":user_token.decode('UTF-8'),
+                "super":"True",
+                "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=TOKEN_EXPIRATION_MINUTES)
+            },
+            app.config['SECRET']
+        )
+
         # 5. Return 
         su_record = superuser_schema.dump(su).data
         su_record.pop('password') # remove password attr as not expected in endpoint output
@@ -225,7 +263,7 @@ def start_session(obj_superuser):
     # First check if there're pre-existing sessions and log them out
     if obj_superuser.lastLoggedIn > obj_superuser.lastLoggedOut:
         response = end_session(obj_superuser)
-        if 'error' in response:
+        if type(response) == dict and 'error' in response:
             return response
 
     # Next, update the user's log in time and return lastLoggedOut time as string.
@@ -258,11 +296,11 @@ def end_session(obj_superuser):
 
 def generate_token(obj_superuser, secret_key):
     """
-        Generates a jwt token
+        Generates a jwt token specific to a user
 
-        :param obj_superuser
-        :param secret_key
-
+        :param obj_superuser, \n
+        :param secret_key \n
+        
         :returns jwt encoded token
     """
 
@@ -271,7 +309,7 @@ def generate_token(obj_superuser, secret_key):
             "id": obj_superuser.id,
             "username":obj_superuser.username,
             "type":"super",
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=180)
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=TOKEN_EXPIRATION_MINUTES)
         },
         secret_key
     )

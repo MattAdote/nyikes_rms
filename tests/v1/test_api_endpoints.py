@@ -84,7 +84,6 @@ class TestApiEndpoints(unittest.TestCase):
         res = self.client.get('api/v1/superusers')       
 
         self.assertTrue(res.is_json, "Json not returned.")
-        self.assertEqual(res.status_code, 200)
     
     def test_endpoint_login_superusers_returns_json(self):
         """Test API endpoint is reachable and returns json"""
