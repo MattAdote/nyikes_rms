@@ -7,20 +7,23 @@ class Config(object):
     CSRF_ENABLED = True
     SECRET = os.getenv('SECRET')
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
-
+    
 
 class DevelopmentConfig(Config):
     """Configurations for Development."""
+    ENV = 'development'
     DEBUG = True
 
 class TestingConfig(Config):
     """Configurations for Testing, with a separate test database."""
+    ENV = 'testing'
     DEBUG = True
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.getenv('TEST_DATABASE_URL')
-
+    
 class StagingConfig(Config):
     """Configurations for Staging."""
+    ENV = 'staging'
     DEBUG = True
 
 
