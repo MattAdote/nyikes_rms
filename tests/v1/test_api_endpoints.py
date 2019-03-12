@@ -70,9 +70,9 @@ class TestApiEndpoints(unittest.TestCase):
         )
 
         self.assertIn('id', res.json['data'])
-        self.assertTrue(all(item in res.json['data'].items() for item in input_1.items()))
-    
-    # def test_endpoint_patch_superuser_returns_json(self):
+        self.assertEqual(res.json['data']['username'], input_1['username'], 'Username Supplied Not Username Returned')
+        self.assertNotEqual(res.json['data']['username'], "", "Hashed password not returned. Empty string received")
+    # def test_endpoint_patch_superuser_returns_json(self)
     #     assert False
 
     # def test_endpoint_get_specific_superuser_returns_json(self):
@@ -112,16 +112,11 @@ class TestApiEndpoints(unittest.TestCase):
             data = json.dumps(input_1),
             content_type = 'application/json'
         )
-        new_superuser = res_1.json['data']
 
-        # Login the superuser
-        input_2 = {
-                "username":new_superuser['username'],
-                "password":new_superuser['password']
-        }
+        # Login the superuser        
         res_2 = self.client.post(
             'api/v1/superusers/login',
-            data = json.dumps(input_2),
+            data = json.dumps(input_1),
             content_type = 'application/json'
         )       
 

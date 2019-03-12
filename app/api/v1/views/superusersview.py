@@ -2,6 +2,8 @@ import  datetime, \
         jwt, \
         requests
 
+from werkzeug.security import generate_password_hash, check_password_hash
+
 # project specific imports
 from flask import   Blueprint, request, jsonify, make_response, \
                     current_app as app
@@ -45,6 +47,8 @@ def create_superuser():
 def save(superuser_record):
     """Sends the superuser to be added to storage."""
 
+    # Hash the superuser's password
+    superuser_record['password'] = generate_password_hash(superuser_record['password'], method='sha256')
     # Save the new item
     superuser = SuperUser(superuser_record['username'], superuser_record['password'])
     superuser.save()
@@ -233,13 +237,9 @@ def verify_credentials(dict_credentials):
         else, returns an error message
     """
     response = {}
-    su_username = SuperUser.query.filter_by(username=dict_credentials['username']).first()
-    if su_username:
-        su = SuperUser.query.filter_by(
-                username=dict_credentials['username'],
-                password=dict_credentials['password'],
-            ).first()
-        if su:
+    su = SuperUser.query.filter_by(username=dict_credentials['username']).first()
+    if su:
+        if check_password_hash(su.password, dict_credentials['password']):
             return su
         else:
             response = {

@@ -34,16 +34,11 @@ class TestWrapperFunctions(unittest.TestCase):
             data = json.dumps(input_1),
             content_type = 'application/json'
         )
-        new_superuser = res_1.json['data']
 
         # Login the superuser
-        input_2 = {
-                "username":new_superuser['username'],
-                "password":new_superuser['password']
-        }
         res_2 = self.client.post(
             'api/v1/superusers/login',
-            data = json.dumps(input_2),
+            data = json.dumps(input_1),
             content_type = 'application/json'
         ) 
 
@@ -79,16 +74,11 @@ class TestWrapperFunctions(unittest.TestCase):
             data = json.dumps(input_1),
             content_type = 'application/json'
         )
-        new_superuser = res_1.json['data']
 
         # Login the superuser
-        input_2 = {
-                "username":new_superuser['username'],
-                "password":new_superuser['password']
-        }
         res_2 = self.client.post(
             'api/v1/superusers/login',
-            data = json.dumps(input_2),
+            data = json.dumps(input_1),
             content_type = 'application/json'
         ) 
 
@@ -126,16 +116,11 @@ class TestWrapperFunctions(unittest.TestCase):
             data = json.dumps(input_1),
             content_type = 'application/json'
         )
-        new_superuser = res_1.json['data']
 
-        # Login the superuser
-        input_2 = {
-                "username":new_superuser['username'],
-                "password":new_superuser['password']
-        }
+        # Login the superuser        
         res_2 = self.client.post(
             'api/v1/superusers/login',
-            data = json.dumps(input_2),
+            data = json.dumps(input_1),
             content_type = 'application/json'
         ) 
 

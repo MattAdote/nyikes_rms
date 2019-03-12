@@ -40,9 +40,8 @@ class TestSuperuserViewFunctions(unittest.TestCase):
             content_type = 'application/json'
         )
         # Next, use the returned data to make call to the function
-        res_1.json['data'].pop('id') # function expects dict of username and password only
         with self.app.app_context():
-            output = self.verify_credentials(res_1.json['data'])
+            output = self.verify_credentials(input_1)
         
         # Finally, assert all is well
         self.assertTrue(isinstance(output, SuperUser), 'Output not instance of class Superuser')        

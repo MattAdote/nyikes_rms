@@ -25,7 +25,7 @@ def upgrade():
     sa.Column('lastModifiedOn', sa.DateTime(), nullable=False),
     sa.Column('lastModifiedBy', sa.String(length=75), nullable=True),
     sa.Column('username', sa.String(length=75), nullable=False),
-    sa.Column('password', sa.String(length=75), nullable=False),
+    sa.Column('password', sa.String(length=150), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('username')
     )

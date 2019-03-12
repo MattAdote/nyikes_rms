@@ -6,7 +6,7 @@ class SuperUser(BaseModel):
     """ This class represents the superuser table """
     
     username = db.Column(db.String(75), unique=True, nullable=False)
-    password = db.Column(db.String(75), nullable=False)
+    password = db.Column(db.String(150), nullable=False)
     lastLoggedIn = db.Column(db.DateTime, default="2000-Jan-01 01:01:01", nullable=False)
     lastLoggedOut = db.Column(db.DateTime, default="2000-Jan-01 01:01:01", nullable=False)
     
