@@ -81,9 +81,36 @@ class TestApiEndpoints(unittest.TestCase):
     def test_endpoint_get_all_superusers_returns_json(self):
         """Test API endpoint is reachable and returns json"""
         
-        res = self.client.get('api/v1/superusers')       
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
 
-        self.assertTrue(res.is_json, "Json not returned.")
+        # Login the superuser
+        res_2 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        
+        # make a call to GET /superusers
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(res_2.json['data']['user_token'])
+        }
+        res_3 = self.client.get(
+            'api/v1/superusers',
+            data = json.dumps({'username': res_2.json['data']['username']}),
+            headers = headers   
+        )       
+
+        self.assertTrue(res_3.is_json, "Json not returned.")
     
     def test_endpoint_login_superusers_returns_json(self):
         """Test API endpoint is reachable and returns json"""
