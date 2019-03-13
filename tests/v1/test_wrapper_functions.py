@@ -45,7 +45,7 @@ class TestWrapperFunctions(unittest.TestCase):
         # make a call to GET /superusers
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_2.json['data']['user_token'])
+                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token'])
         }
         res_3 = self.client.get(
             'api/v1/superusers',
@@ -155,7 +155,7 @@ class TestWrapperFunctions(unittest.TestCase):
         # Get the superuser data that we expect to receive
         input_3 = {
             "username": res_2.json['data']['username'],
-            "user_token":res_2.json['data']['user_token']
+            "user_token":res_2.json['data']['access_token']
         }
 
         output = self.parse_token(input_3)
@@ -200,7 +200,7 @@ class TestWrapperFunctions(unittest.TestCase):
         ) 
 
         # Get the superuser data that we expect to receive
-        dirty_token = res_2.json['data']['user_token'] + 'b'
+        dirty_token = res_2.json['data']['access_token'] + 'b'
         input_3 = {
             "username": res_2.json['data']['username'],
             "user_token":dirty_token
@@ -256,7 +256,7 @@ class TestWrapperFunctions(unittest.TestCase):
         spoofed_username = 'user_mjanja'
         input_3 = {
             "username": spoofed_username,
-            "user_token":res_2.json['data']['user_token']
+            "user_token":res_2.json['data']['access_token']
         }
         
         output = self.parse_token(input_3)

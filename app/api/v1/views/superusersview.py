@@ -206,7 +206,7 @@ def login_superuser():
         token = jwt.encode(
             {
                 "username":su.username,
-                "user_token":user_token.decode('UTF-8'),
+                "user_token":user_token.decode('UTF-8'), # this is signed by user's dynamic secret key
                 "super":"True",
                 "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=TOKEN_EXPIRATION_MINUTES)
             },
@@ -216,7 +216,11 @@ def login_superuser():
         # 5. Return 
         su_record = superuser_schema.dump(su).data
         su_record.pop('password') # remove password attr as not expected in endpoint output
-        su_record.update({"user_token": token.decode('UTF-8')}) # append user token
+        su_record.update({
+            "access_token": token.decode('UTF-8'), # append user's access token
+            "token_type":"Bearer",
+            "expires_in":360
+        }) 
         response = {
             'status': 200,
             'data': su_record,

@@ -102,7 +102,7 @@ class TestApiEndpoints(unittest.TestCase):
         # make a call to GET /superusers
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_2.json['data']['user_token'])
+                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token'])
         }
         res_3 = self.client.get(
             'api/v1/superusers',

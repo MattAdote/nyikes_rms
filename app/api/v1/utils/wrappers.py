@@ -60,7 +60,7 @@ def parse_token(json_data):
     
     token = valid_req_data['user_token']
             
-    # Decode the user token
+    # Decode the supplied access token
     try:
         decoded_token = jwt.decode(token, os.getenv('SECRET'))
     except Exception as e:
