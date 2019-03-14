@@ -5,7 +5,7 @@ import json, pdb
 from .contexts import   create_api_server, db, \
                         BaseModel, \
                         SuperUser, superuser_schema, \
-                        verify_credentials, start_session, end_session, generate_token
+                        verify_credentials, start_session, end_session, generate_token, validate_token
 
 class TestSuperuserViewFunctions(unittest.TestCase):
     """This class represents the superuser view functions test case"""
@@ -20,6 +20,7 @@ class TestSuperuserViewFunctions(unittest.TestCase):
         self.start_session = start_session
         self.end_session = end_session
         self.generate_token = generate_token
+        self.validate_token = validate_token
 
         # binds the app to the current context
         with self.app.app_context():
@@ -239,6 +240,207 @@ class TestSuperuserViewFunctions(unittest.TestCase):
         
         assert(type(decoded_token) == dict)
 
+    
+    def test_function_validate_token_returns_token_payload_on_successful_decode(self):
+        """ Test that function validate_token returns the user's token payload """
+        
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        with self.app.app_context():
+            obj_superuser = SuperUser.query.get(res_1.json['data']['id'])
+            superuser_secret = self.start_session(obj_superuser)
+            token = self.generate_token(obj_superuser, superuser_secret)
+            server_access_token_payload = {
+                "username"      :   obj_superuser.username,
+                "user_token"    :   token.decode('UTF-8'), 
+                "super"         :   "True",
+                "exp"           :   5
+            }
+            validated_token_payload = self.validate_token(server_access_token_payload)
+
+        self.assertIn('username', validated_token_payload, "user_token payload is missing 'username' key")
+        self.assertEqual(obj_superuser.username, validated_token_payload['username'], "Payload username invalid")
+
+
+    def test_function_validate_token_returns_error_on_payload_input_missing_username(self):
+        """ 
+            Test that function validate_token returns an error if
+            the input access_token_payload is missing key 'username'
+        """
+
+        expected_output =  {
+            "status" : 400,
+            "headers": {
+                "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                        'error="invalid_request"; '
+                                        'error_description="username missing in access_token payload" '
+            }   
+        }
+
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        with self.app.app_context():
+            obj_superuser = SuperUser.query.get(res_1.json['data']['id'])
+            superuser_secret = self.start_session(obj_superuser)
+            token = self.generate_token(obj_superuser, superuser_secret)
+            server_access_token_payload = {
+                # "username"      :   obj_superuser.username,
+                "user_token"    :   token.decode('UTF-8'), 
+                "super"         :   "True",
+                "exp"           :   5
+            }
+            output = self.validate_token(server_access_token_payload)
+
+        self.assertIn('status', output)
+        self.assertEqual(output['status'], expected_output['status'], "\nOutput status code does not match Expected")
+
+        self.assertIn('headers', output)
+        self.assertEqual(output['headers'], expected_output['headers'], "\nOutput Headers do not match Expected")
+
+    def test_function_validate_token_returns_error_on_payload_input_empty_username(self):
+        """ 
+            Test that function validate_token returns an error if
+            the input access_token_payload key 'username' is empty
+        """
+        expected_output =  {
+            "status" : 400,
+            "headers": {
+                "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                        'error="invalid_request"; '
+                                        'error_description="username missing a value in access_token payload" '
+            }   
+        }
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        with self.app.app_context():
+            obj_superuser = SuperUser.query.get(res_1.json['data']['id'])
+            superuser_secret = self.start_session(obj_superuser)
+            token = self.generate_token(obj_superuser, superuser_secret)
+            server_access_token_payload = {
+                "username"      :   "",
+                "user_token"    :   token.decode('UTF-8'), 
+                "super"         :   "True",
+                "exp"           :   5
+            }
+            output = self.validate_token(server_access_token_payload)
+
+        self.assertIn('status', output)
+        self.assertEqual(output['status'], expected_output['status'], "\nOutput status code does not match Expected")
+
+        self.assertIn('headers', output)
+        self.assertEqual(output['headers'], expected_output['headers'], "\nOutput Headers do not match Expected")
+    
+    def test_function_validate_token_returns_error_on_payload_input_missing_token(self):
+        """ 
+            Test that function validate_token returns an error if
+            the input access_token_payload is missing key 'user_token'
+        """
+
+        expected_output =  {
+            "status" : 400,
+            "headers": {
+                "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                        'error="invalid_request"; '
+                                        'error_description="user_token missing in access_token payload" '
+            }   
+        }
+
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        with self.app.app_context():
+            obj_superuser = SuperUser.query.get(res_1.json['data']['id'])
+            superuser_secret = self.start_session(obj_superuser)
+            token = self.generate_token(obj_superuser, superuser_secret)
+            server_access_token_payload = {
+                "username"      :   obj_superuser.username,
+                # "user_token"    :   token.decode('UTF-8'), 
+                "super"         :   "True",
+                "exp"           :   5
+            }
+            output = self.validate_token(server_access_token_payload)
+
+        self.assertIn('status', output)
+        self.assertEqual(output['status'], expected_output['status'], "\nOutput status code does not match Expected")
+
+        self.assertIn('headers', output)
+        self.assertEqual(output['headers'], expected_output['headers'], "\nOutput Headers do not match Expected")
+
+    def test_function_validate_token_returns_error_on_payload_input_empty_token(self):
+        """ 
+            Test that function validate_token returns an error if
+            the input access_token_payload key 'user_token' is empty
+        """
+        expected_output =  {
+            "status" : 400,
+            "headers": {
+                "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                        'error="invalid_request"; '
+                                        'error_description="user_token missing a value in access_token payload" '
+            }   
+        }
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        with self.app.app_context():
+            obj_superuser = SuperUser.query.get(res_1.json['data']['id'])
+            superuser_secret = self.start_session(obj_superuser)
+            token = self.generate_token(obj_superuser, superuser_secret)
+            server_access_token_payload = {
+                "username"      :   obj_superuser.username,
+                "user_token"    :   "", 
+                "super"         :   "True",
+                "exp"           :   5
+            }
+            output = self.validate_token(server_access_token_payload)
+
+        self.assertIn('status', output)
+        self.assertEqual(output['status'], expected_output['status'], "\nOutput status code does not match Expected")
+
+        self.assertIn('headers', output)
+        self.assertEqual(output['headers'], expected_output['headers'], "\nOutput Headers do not match Expected")
+    
+
+
+    def test_function_validate_token_returns_error_on_failed_decode(self):
+        """ 
+            Test that function validate_token returns an error if
+            the token decode operation fails on the user's token
+        """
+    
     def tearDown(self):
         """teardown all initialized variables."""
         with self.app.app_context():

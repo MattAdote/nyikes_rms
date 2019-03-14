@@ -12,7 +12,7 @@ from flask import   Blueprint, request, jsonify, make_response, \
 from app.api.v1.utils import    parse_request, validate_request_data, \
                                 check_is_empty, endpoint_error_response, \
                                 token_required, generate_authorization_error_response
-from app.api.v1.models import SuperUser, superuser_schema
+from app.api.v1.models import SuperUser, superuser_schema, superusers_schema
 
 
 DATE_FORMAT = "{:%Y-%b-%d %H:%M:%S}"
@@ -109,28 +109,21 @@ def superuser(**kwargs):
         }
         return make_response(jsonify(response), response['status'])
     
-    # Get user from db
-    obj_superuser = SuperUser.query.filter_by(username=kwargs['access_token']['username']).first()
-    user_secret = DATE_FORMAT.format(obj_superuser.lastLoggedOut)
-    
-    try:
-        token_data = jwt.decode(kwargs['access_token']['user_token'], user_secret)
-    except Exception as e:
-        www_authenticate_info =  {
-            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
-                                    'error="invalid_token"; '
-                                    'error_description="{}" '.format(e)
-        }
-        response = {
-            "status" : 401,
-            "headers": www_authenticate_info
-        }
-        
-        return generate_authorization_error_response(response)
+    user_token_payload = validate_token(kwargs['access_token'])
+    if 'headers' in user_token_payload:
+        return generate_authorization_error_response(user_token_payload)
+
+    # get the superusers from db
+    superusers = SuperUser.query.all()
+    su_records = superusers_schema.dump(superusers).data
+
+    # remove the password attr as not expected in output
+    for record in su_records:
+        record.pop('password')
 
     response = {
         'status': 200,
-        'data': []
+        'data': su_records
     }
 
     return make_response(jsonify(response), response['status'])
@@ -327,3 +320,94 @@ def generate_token(obj_superuser, secret_key):
     )
 
     return token
+
+def validate_token(access_token_payload):
+    """
+        Validates the user's token contained in the access token
+
+        :returns the decoded token's payload
+    """
+    err_response = {}
+    
+    # Check that supplied input is ok
+    err_response = parse_access_token_payload(access_token_payload)
+    if 'headers' in err_response:
+        return err_response
+
+    # Get user from db
+    obj_superuser = SuperUser.query.filter_by(username=access_token_payload['username']).first()
+    user_secret = DATE_FORMAT.format(obj_superuser.lastLoggedOut)
+    
+    # Decode user's token
+    try:
+        token_payload = jwt.decode(access_token_payload['user_token'], user_secret)
+    except Exception as e:
+        www_authenticate_info =  {
+            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                    'error="invalid_token"; '
+                                    'error_description="{}" '.format(e)
+        }
+        err_response = {
+            "status" : 401,
+            "headers": www_authenticate_info
+        }
+        
+        return err_response
+    return token_payload
+
+def parse_access_token_payload(access_token_payload):
+    """
+        Checks the access token for missing or empty values
+
+        :param access_token_payload
+
+        :returns Error on missing or empty values othereise
+        returns the access_token_payload
+    """
+    err_response = {}
+    if 'username' not in access_token_payload:
+        www_authenticate_info =  {
+            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                    'error="invalid_request"; '
+                                    'error_description="username missing in access_token payload" '
+        }
+        err_response = {
+            "status" : 400,
+            "headers": www_authenticate_info
+        }
+        return err_response
+    elif access_token_payload['username'] == "" or access_token_payload['username'] == None:
+        www_authenticate_info =  {
+            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                    'error="invalid_request"; '
+                                    'error_description="username missing a value in access_token payload" '
+        }
+        err_response = {
+            "status" : 400,
+            "headers": www_authenticate_info
+        }
+        return err_response
+    elif 'user_token' not in access_token_payload:
+        www_authenticate_info =  {
+            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                    'error="invalid_request"; '
+                                    'error_description="user_token missing in access_token payload" '
+        }
+        err_response = {
+            "status" : 400,
+            "headers": www_authenticate_info
+        }
+        return err_response
+    elif access_token_payload['user_token'] == "" or access_token_payload['user_token'] == None:
+        www_authenticate_info =  {
+            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                    'error="invalid_request"; '
+                                    'error_description="user_token missing a value in access_token payload" '
+        }
+        err_response = {
+            "status" : 400,
+            "headers": www_authenticate_info
+        }
+        return err_response
+    else:
+        return access_token_payload
