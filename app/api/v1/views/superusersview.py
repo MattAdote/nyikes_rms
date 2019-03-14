@@ -107,17 +107,10 @@ def superuser_validate_request_data(req_data):
 
 @superusers_view_blueprint.route('/superusers', methods=['GET'])
 @token_required
-def superuser(**kwargs):
+def superuser(access_token):
     """ The superuser view for the API Server"""
-    
-    if len(kwargs) != 1:
-        response = { 
-            "status":400,
-            "error" : "args greater than 1. Supplied: {} ".format(kwargs.items())
-        }
-        return make_response(jsonify(response), response['status'])
-    
-    user_token_payload = validate_token(kwargs['access_token'])
+        
+    user_token_payload = validate_token(access_token)
     if 'headers' in user_token_payload:
         return generate_authorization_error_response(user_token_payload)
 
