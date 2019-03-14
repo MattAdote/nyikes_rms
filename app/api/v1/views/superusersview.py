@@ -1,4 +1,4 @@
-import  datetime, \
+import  datetime, time, \
         jwt, \
         requests
 
@@ -11,8 +11,9 @@ from flask import   Blueprint, request, jsonify, make_response, \
 # local imports
 from app.api.v1.utils import    parse_request, validate_request_data, \
                                 check_is_empty, endpoint_error_response, \
-                                token_required
+                                token_required, generate_authorization_error_response
 from app.api.v1.models import SuperUser, superuser_schema
+
 
 DATE_FORMAT = "{:%Y-%b-%d %H:%M:%S}"
 TOKEN_EXPIRATION_MINUTES = 180
@@ -103,7 +104,7 @@ def superuser(**kwargs):
     
     if len(kwargs) != 1:
         response = { 
-            "status":403,
+            "status":400,
             "error" : "args greater than 1. Supplied: {} ".format(kwargs.items())
         }
         return make_response(jsonify(response), response['status'])
@@ -115,11 +116,17 @@ def superuser(**kwargs):
     try:
         token_data = jwt.decode(kwargs['access_token']['user_token'], user_secret)
     except Exception as e:
-        response = {
-            "status" : 403,
-            "error" : str(e)
+        www_authenticate_info =  {
+            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                    'error="invalid_token"; '
+                                    'error_description="{}" '.format(e)
         }
-        return make_response(jsonify(response), response['status'])
+        response = {
+            "status" : 401,
+            "headers": www_authenticate_info
+        }
+        
+        return generate_authorization_error_response(response)
 
     response = {
         'status': 200,
@@ -267,6 +274,7 @@ def start_session(obj_superuser):
     # First check if there're pre-existing sessions and log them out
     if obj_superuser.lastLoggedIn > obj_superuser.lastLoggedOut:
         response = end_session(obj_superuser)
+        time.sleep(0.6) # put some delay after last log out
         if type(response) == dict and 'error' in response:
             return response
 

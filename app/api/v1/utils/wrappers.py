@@ -32,7 +32,7 @@ def token_required(f):
         # extract token from Auth header
         token = parse_auth_header(request.headers['Authorization'])
         if 'headers' in token:
-            return generate_error_response(token)
+            return generate_authorization_error_response(token)
         
         # Add token to the request data
         req_data.update({"user_token":token})
@@ -40,7 +40,7 @@ def token_required(f):
         # Parse the token
         kwargs = parse_token(req_data)
         if 'headers' in kwargs:
-            return generate_error_response(kwargs)
+            return generate_authorization_error_response(kwargs)
         else:
             return f(*args, **kwargs)
 
@@ -122,7 +122,7 @@ def parse_auth_header(auth_header):
         }
         return  response
 
-def generate_error_response(dict_response):
+def generate_authorization_error_response(dict_response):
     """
         Generates an error reponse to be returned
         via the WWW-Authenticate header
