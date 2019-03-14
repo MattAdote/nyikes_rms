@@ -219,7 +219,7 @@ def login_superuser():
         su_record.update({
             "access_token": token.decode('UTF-8'), # append user's access token
             "token_type":"Bearer",
-            "expires_in":360
+            "expires_in":TOKEN_EXPIRATION_MINUTES
         }) 
         response = {
             'status': 200,
