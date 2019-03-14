@@ -75,8 +75,42 @@ class TestApiEndpoints(unittest.TestCase):
     # def test_endpoint_patch_superuser_returns_json(self)
     #     assert False
 
-    # def test_endpoint_get_specific_superuser_returns_json(self):
-    #     assert False
+    def test_endpoint_get_specific_superuser_returns_superuser_of_specified_id(self):
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        expected_output = {
+            "id": res_1.json['data']['id'],
+            "username": res_1.json['data']['username']
+        }
+        # Login the superuser
+        res_2 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        
+        # make a call to GET /superusers/<superuser_id>
+        superuser_id = res_1.json['data']['id']
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token'])
+        }
+        res_3 = self.client.get(
+            'api/v1/superusers/{}'.format(superuser_id),
+            data = json.dumps({'username': res_2.json['data']['username']}),
+            headers = headers   
+        )       
+
+        self.assertEqual( res_3.json['data']['id'], expected_output['id'], "\nReturned id does not match Expected id")
+        self.assertEqual( res_3.json['data']['username'], expected_output['username'], "\nReturned username does not match Expected username") 
 
     def test_endpoint_get_all_superusers_returns_json(self):
         """Test API endpoint is reachable and returns json"""

@@ -419,3 +419,28 @@ def parse_access_token_payload(access_token_payload):
         return err_response
     else:
         return access_token_payload
+
+@superusers_view_blueprint.route('/superusers/<superuser_id>', methods=['GET'])
+@token_required
+def get_one_superuser(superuser_id, access_token):
+    """
+        Fetches a superuser of the specified id
+    """
+
+    user_token_payload = validate_token(access_token)
+    if 'headers' in user_token_payload:
+        return generate_authorization_error_response(user_token_payload)
+
+    # get the superusers from db
+    superuser = SuperUser.query.get(superuser_id)
+    su_record = superuser_schema.dump(superuser).data
+
+    # remove the password attr as not expected in output
+    su_record.pop('password')
+
+    response = {
+        'status': 200,
+        'data': su_record
+    }
+
+    return make_response(jsonify(response), response['status'])

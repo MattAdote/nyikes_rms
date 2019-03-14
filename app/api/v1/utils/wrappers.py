@@ -38,10 +38,11 @@ def token_required(f):
         req_data.update({"user_token":token})
         
         # Parse the token
-        kwargs = parse_token(req_data)
-        if 'headers' in kwargs:
-            return generate_authorization_error_response(kwargs)
+        token_payload = parse_token(req_data)
+        if 'headers' in token_payload:
+            return generate_authorization_error_response(token_payload)
         else:
+            kwargs.update(token_payload)
             return f(*args, **kwargs)
 
     return decorated
