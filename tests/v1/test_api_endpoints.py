@@ -111,6 +111,86 @@ class TestApiEndpoints(unittest.TestCase):
 
         self.assertEqual( res_3.json['data']['id'], expected_output['id'], "\nReturned id does not match Expected id")
         self.assertEqual( res_3.json['data']['username'], expected_output['username'], "\nReturned username does not match Expected username") 
+    
+    def test_endpoint_get_specific_superuser_returns_error_if_user_not_found(self):
+        expected_output = {
+            "status": 404,
+            "error": "User not found. Likely does not exist"
+        }
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        # Login the superuser
+        res_2 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        
+        # make a call to GET /superusers/<superuser_id>
+        superuser_id = 10201
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token'])
+        }
+        res_3 = self.client.get(
+            'api/v1/superusers/{}'.format(superuser_id),
+            data = json.dumps({'username': res_2.json['data']['username']}),
+            headers = headers   
+        )       
+
+        self.assertIn('status', res_3.json)
+        self.assertIn('error', res_3.json)
+
+        self.assertEqual( res_3.json['status'], expected_output['status'], "\nReturned error does not match Expected id")
+        self.assertEqual( res_3.json['error'], expected_output['error'], "\nReturned error does not match Expected username") 
+    
+    def test_endpoint_get_specific_superuser_returns_error_if_db_operation_fail(self):
+        expected_output = {
+            "status": 500,
+            "error": "Database error. Check your input"
+        }
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        res_1 = self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        # Login the superuser
+        res_2 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        
+        # make a call to GET /superusers/<superuser_id>
+        superuser_id = 'malicious input'
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token'])
+        }
+        res_3 = self.client.get(
+            'api/v1/superusers/{}'.format(superuser_id),
+            data = json.dumps({'username': res_2.json['data']['username']}),
+            headers = headers   
+        )       
+
+        self.assertIn('status', res_3.json)
+        self.assertIn('error', res_3.json)
+
+        self.assertEqual( res_3.json['status'], expected_output['status'], "\nReturned error does not match Expected id")
+        self.assertEqual( res_3.json['error'], expected_output['error'], "\nReturned error does not match Expected username") 
 
     def test_endpoint_get_all_superusers_returns_json(self):
         """Test API endpoint is reachable and returns json"""

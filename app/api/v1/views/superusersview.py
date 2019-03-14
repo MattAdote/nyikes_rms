@@ -425,11 +425,24 @@ def get_one_superuser(superuser_id, access_token):
         return generate_authorization_error_response(user_token_payload)
 
     # get the superusers from db
-    superuser = SuperUser.query.get(superuser_id)
-    su_record = superuser_schema.dump(superuser).data
+    try:
+        superuser = SuperUser.query.get(superuser_id)
+    except Exception as e:
+        response = {
+            "status": 500,
+            "error": "Database error. Check your input"
+        }
+        return make_response(jsonify(response), response['status'])
+    else:
+        if superuser == None:
+            response = {
+                "status": 404,
+                "error": "User not found. Likely does not exist"
+            }
+            return make_response(jsonify(response), response['status'])
 
-    # remove the password attr as not expected in output
-    su_record.pop('password')
+    su_record = superuser_schema.dump(superuser).data
+    su_record.pop('password') # remove the password attr as not expected in output
 
     response = {
         'status': 200,
