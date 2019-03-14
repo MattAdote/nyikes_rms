@@ -47,6 +47,14 @@ def create_superuser():
 
 def save(superuser_record):
     """Sends the superuser to be added to storage."""
+    # first check that username doesn't already exist
+    existing_superuser = SuperUser.query.filter_by(username=superuser_record['username']).first()
+
+    if not existing_superuser == None:
+        return {
+            "status":400,
+            "error": "Cannot create new user. Username: '{}' already exists.".format(superuser_record['username'])
+        }
 
     # Hash the superuser's password
     superuser_record['password'] = generate_password_hash(superuser_record['password'], method='sha256')
