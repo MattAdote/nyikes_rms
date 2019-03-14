@@ -9,6 +9,7 @@ addons:
 env:
   global:
     - TEST_DATABASE_URL=postgres://postgres:@localhost/test_travisci
+    - SECRET='neither a particularly strong nor recommended secret is this now??'
 
 before_install:
     - pip install pytest pytest-cov
