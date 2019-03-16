@@ -8,7 +8,9 @@ sys.path.insert(
 
 from app import create_api_server, db
 
-from app.api.v1.models import BaseModel, SuperUser, superuser_schema
+from app.api.v1.models import   BaseModel, UserModel, \
+                                SuperUser, superuser_schema, \
+                                Member, member_schema
 
 from app.api.v1.views.superusersview import verify_credentials, start_session, end_session, \
                                             generate_token, validate_token

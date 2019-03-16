@@ -24,3 +24,16 @@ class BaseModel(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
+
+class UserModel(db.Model):
+    """
+        Base class for "User" objects of the RMS
+        Contains properties applicable to all User objects
+    """
+
+    __abstract__ = True
+
+    public_id = db.Column(db.String(150), nullable=True)
+    password = db.Column(db.String(150), nullable=True)
+    lastLoggedIn = db.Column(db.DateTime, default="2000-Jan-01 01:01:01", nullable=False)
+    lastLoggedOut = db.Column(db.DateTime, default="2000-Jan-01 01:01:01", nullable=False)
