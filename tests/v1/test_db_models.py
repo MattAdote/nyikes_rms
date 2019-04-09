@@ -5,7 +5,8 @@ import json, pdb
 from .contexts import   create_api_server, db, \
                         BaseModel, UserModel, \
                         SuperUser, superuser_schema, \
-                        Member, member_schema
+                        Member, member_schema, \
+                        MembershipClass, member_class_schema
 
 class TestDBModels(unittest.TestCase):
     """This class represents the db models test case"""
@@ -17,6 +18,7 @@ class TestDBModels(unittest.TestCase):
         self.client = self.app.test_client()
         self.superuser = SuperUser
         self.member = Member
+        self.MembershipClass = MembershipClass
 
         # binds the app to the current context
         with self.app.app_context():
@@ -106,7 +108,7 @@ class TestDBModels(unittest.TestCase):
     def test_model_class_member_has_native_propertes(self):
         """ Test that the Member has native properties """
         
-        properties = ['first_name', 'middle_name','last_name', 'email', 'phone_number']
+        properties = ['first_name', 'middle_name','last_name', 'email', 'phone_number', 'class_id']
 
         for prop in properties:
             self.assertTrue(hasattr(Member, prop), '\nClass, Member, is missing property: {}'.format(prop))
@@ -126,6 +128,8 @@ class TestDBModels(unittest.TestCase):
         self.assertTrue(isinstance(obj_member, Member), 'Object  not instance of its class')
 
     def test_object_member_can_save_to_db(self):
+        """ Test that the object, Member, can save to db """
+
         member_properties = {
             "first_name" : "LaKwanza",
             "middle_name": "MajinaZaKati",
@@ -134,9 +138,19 @@ class TestDBModels(unittest.TestCase):
             "phone_number" : "0700123456"
         }
         with self.app.app_context():
-            member = self.member(**member_properties)
+            # First, create the membership class
+            membershipclass_properties = {
+                "class_name" : "Test Class A",
+                "monthly_contribution_amount": 1000.00
+            }
+            membership_class = self.MembershipClass(**membershipclass_properties)
+            membership_class.save()
+            
+            # Next, create the member and pass in the backref property (membership_class)
+            member = self.member(**member_properties, member_class=membership_class)
             member.save()
-
+            
+            # Evaluate the parsed member object
             res = member_schema.jsonify(member)
 
             self.assertIn('id', res.json)
@@ -147,6 +161,47 @@ class TestDBModels(unittest.TestCase):
                 \nEXPECTED TO SEE {}'.format(res.json, member_properties)
             )
 
+    def test_model_class_membershipclass_has_native_propertes(self):
+        """ Test that the MembershipClass class has native properties """
+        
+        properties = ['class_name', 'monthly_contribution_amount']
+
+        for prop in properties:
+            self.assertTrue(hasattr(self.MembershipClass, prop), '\nClass, MembershipClass, is missing property: {}'.format(prop))
+    
+    def test_object_membershipclass_is_instance_of_its_model_class(self):
+        """ Test that an instantiated MembershipClass object is indeed an instance of the class MembershipClass """
+
+        membershipclass_properties = {
+            "class_name" : "Class A",
+            "monthly_contribution_amount": 1000.00
+        }
+        
+        obj_membershipclass = MembershipClass(**membershipclass_properties)
+        self.assertTrue(isinstance(obj_membershipclass, MembershipClass), 'Object  not instance of its class')
+        
+    def test_object_membershipclass_can_save_to_db(self):
+        """
+            Test that the membershipclass object can save to db
+        """
+        membershipclass_properties = {
+            "class_name" : "Class A",
+            "monthly_contribution_amount": 1000.00
+        }
+        with self.app.app_context():
+            membershipclass = self.MembershipClass(**membershipclass_properties)
+            membershipclass.save()
+
+            res = member_class_schema.jsonify(membershipclass)
+
+            self.assertIn('id', res.json)
+            self.assertTrue(
+                all(item in res.json.items() for item in membershipclass_properties.items() ),
+                'Missing value in returned output. What was put in not being returned verbatim \
+                \nGOT {} \
+                \nEXPECTED TO SEE {}'.format(res.json, membershipclass_properties)
+            )
+    
     def tearDown(self):
         """teardown all initialized variables."""
         with self.app.app_context():
