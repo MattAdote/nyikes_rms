@@ -17,4 +17,5 @@ from app.api.v1.views.superusersview import verify_credentials, start_session, e
                                             generate_token, validate_token
 
 from app.api.v1.utils import    validate_request_data, validate_route_param, invalid_param, check_is_empty, \
-                                parse_token, parse_auth_header
+                                parse_token, parse_auth_header, \
+                                endpoint_validate_user_token, endpoint_parse_access_token_payload
