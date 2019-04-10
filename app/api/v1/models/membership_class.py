@@ -7,12 +7,18 @@ class MembershipClass(BaseModel):
     """
     
     class_name = db.Column(db.String(75), nullable=False)
-    monthly_contribution_amount = db.Column(db.Float(7), nullable=False)
-    members = db.relationship('Member', backref='member_class')    
+    monthly_contrib_amount = db.Column(db.Float(7), nullable=False)
+    members = db.relationship('Member', backref='membership_class')    
 
-    def __init__(self, class_name, monthly_contribution_amount):
-        self.class_name = class_name
-        self.monthly_contribution_amount = monthly_contribution_amount
+    initial_attributes = set(['class_name', 'monthly_contrib_amount'])
+
+    def __init__(self, **membership_class_properties):
+        for prop in membership_class_properties:
+            if prop not in MembershipClass.initial_attributes:
+                raise Exception('Received unexpected property: {}'.format(prop))
+        
+
+        super().__init__(**membership_class_properties)
 
     @staticmethod
     def get_all():
@@ -22,8 +28,8 @@ class MembershipClass(BaseModel):
 class MembershipClassSchema(ma.ModelSchema):
     class Meta:
         model = MembershipClass
-        fields = ['id', 'class_name', 'monthly_contribution_amount']
+        fields = ['id', 'class_name', 'monthly_contrib_amount']
 
 # Init schema
-member_class_schema = MembershipClassSchema(strict=True)
+membership_class_schema = MembershipClassSchema(strict=True)
 member_classes_schema = MembershipClassSchema(many=True, strict=True)

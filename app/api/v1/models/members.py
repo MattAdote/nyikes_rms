@@ -14,7 +14,7 @@ class Member(BaseModel, UserModel):
     email = db.Column(db.String(75), unique=True, nullable=False)
     phone_number = db.Column(db.String(75), nullable=False)
 
-    initial_attributes = set(['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'member_class'])
+    initial_attributes = set(['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'membership_class'])
 
     def __init__(self, **member_properties):
         for prop in member_properties:

@@ -271,7 +271,55 @@ class TestApiEndpoints(unittest.TestCase):
             "Received output data keys does not match Expected Output keys 100%"
         )
 
+    def test_endpoint_post_settings_config_members_returns_json(self):
+        """Test API endpoint is reachable and returns json"""
+        
+        res = self.client.post('api/v1/settings/config/members')       
+        
+        self.assertTrue(res.is_json, "Json not returned.")
     
+    def test_endpoint_post_settings_config_members_returns_error_on_incorrect_content_tyoe(self):
+        """Test API endpoint returns error if incorrect or no content type given """
+        res = self.client.post('api/v1/settings/config/members')
+        
+        self.assertIn('error', res.json, 'Error not Returned')
+
+        self.assertEqual(400, res.status_code)
+
+    def test_endpoint_post_settings_config_members_returns_error_if_required_field_empty(self):
+        """Test API endpoint returns error if request fields are empty """
+
+        res = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps({
+                    "class_name": "",
+                    "monthly_contrib_amount": ""                
+            }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('error', res.json)
+        self.assertEqual(400, res.status_code)
+
+    def test_endpoint_post_settings_config_members_returns_new_membership_class_record_with_id(self):
+        """Test API endpoint returns newly created membership class record with id """
+
+        input_1 = {
+                    "class_name": "Test Class ABC",
+                    "monthly_contrib_amount": 1550.00                
+        }
+
+        res = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('id', res.json['data'])
+        self.assertEqual(res.json['data']['class_name'], input_1['class_name'], 'class_name supplied Not class_name returned')
+        self.assertEqual(res.json['data']['monthly_contrib_amount'], input_1['monthly_contrib_amount'], 'monthly_contrib_amount supplied Not monthly_contrib_amount returned')
+
+
     def tearDown(self):
         """teardown all initialized variables."""
         

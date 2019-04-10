@@ -6,7 +6,7 @@ from .contexts import   create_api_server, db, \
                         BaseModel, UserModel, \
                         SuperUser, superuser_schema, \
                         Member, member_schema, \
-                        MembershipClass, member_class_schema
+                        MembershipClass, membership_class_schema
 
 class TestDBModels(unittest.TestCase):
     """This class represents the db models test case"""
@@ -141,13 +141,13 @@ class TestDBModels(unittest.TestCase):
             # First, create the membership class
             membershipclass_properties = {
                 "class_name" : "Test Class A",
-                "monthly_contribution_amount": 1000.00
+                "monthly_contrib_amount": 1000.00
             }
             membership_class = self.MembershipClass(**membershipclass_properties)
             membership_class.save()
             
             # Next, create the member and pass in the backref property (membership_class)
-            member = self.member(**member_properties, member_class=membership_class)
+            member = self.member(**member_properties, membership_class=membership_class)
             member.save()
             
             # Evaluate the parsed member object
@@ -164,7 +164,7 @@ class TestDBModels(unittest.TestCase):
     def test_model_class_membershipclass_has_native_propertes(self):
         """ Test that the MembershipClass class has native properties """
         
-        properties = ['class_name', 'monthly_contribution_amount']
+        properties = ['class_name', 'monthly_contrib_amount']
 
         for prop in properties:
             self.assertTrue(hasattr(self.MembershipClass, prop), '\nClass, MembershipClass, is missing property: {}'.format(prop))
@@ -174,7 +174,7 @@ class TestDBModels(unittest.TestCase):
 
         membershipclass_properties = {
             "class_name" : "Class A",
-            "monthly_contribution_amount": 1000.00
+            "monthly_contrib_amount": 1000.00
         }
         
         obj_membershipclass = MembershipClass(**membershipclass_properties)
@@ -186,13 +186,13 @@ class TestDBModels(unittest.TestCase):
         """
         membershipclass_properties = {
             "class_name" : "Class A",
-            "monthly_contribution_amount": 1000.00
+            "monthly_contrib_amount": 1000.00
         }
         with self.app.app_context():
             membershipclass = self.MembershipClass(**membershipclass_properties)
             membershipclass.save()
 
-            res = member_class_schema.jsonify(membershipclass)
+            res = membership_class_schema.jsonify(membershipclass)
 
             self.assertIn('id', res.json)
             self.assertTrue(
