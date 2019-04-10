@@ -3,7 +3,9 @@ from flask import   Blueprint, request, jsonify, make_response
 
 # local imports
 from app.api.v1.utils import    parse_request, validate_request_data, \
-                                check_is_empty, endpoint_error_response
+                                check_is_empty, endpoint_error_response, \
+                                token_required, generate_authorization_error_response, \
+                                endpoint_validate_user_token
 
 from app.api.v1.models import   MembershipClass, membership_class_schema
 
@@ -12,17 +14,25 @@ settings_config_members_view_blueprint = Blueprint('settings_config_members_view
 
 
 @settings_config_members_view_blueprint.route('/settings/config/members', methods=['POST'])
-def create_membership_class():
+@token_required
+def create_membership_class(access_token):
     """ This creates a new membership class record"""
     response = {}
     data = {}
     
+    user_token_payload = endpoint_validate_user_token(access_token)
+    if 'headers' in user_token_payload:
+        return generate_authorization_error_response(user_token_payload)
+        
     # Parse the request data to check content_type is correct
     data = parse_request(request)
     if type(data) == dict and 'error' in data:
         return make_response(jsonify(data), data['status'])
 
     # check validity of request data
+    # tokens verified. so strip the token data from the request data
+    data.pop('username')
+    data.pop('user_token')
     res_valid_data = settings_config_members_validate_request_data(data)
 
     # process data if valid, else, return validation findings

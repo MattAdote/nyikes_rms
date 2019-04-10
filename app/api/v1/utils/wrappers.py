@@ -87,13 +87,9 @@ def parse_token(json_data):
         response.update({"headers": www_authenticate_info })
         return response
 
-    # pass the user token back to the view function
-    user_token_info = {
-        "username":decoded_token['username'],
-        "user_token":decoded_token['user_token']
-    }
+    # pass the decoded token back to the view function
     kwargs = {
-        "access_token" : user_token_info
+        "access_token" : decoded_token
     }
 
     return kwargs
