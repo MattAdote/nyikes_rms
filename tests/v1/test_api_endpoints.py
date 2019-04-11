@@ -101,11 +101,12 @@ class TestApiEndpoints(unittest.TestCase):
         superuser_id = res_1.json['data']['id']
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token'])
+                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_2.json['data']['username']
         }
         res_3 = self.client.get(
             'api/v1/superusers/{}'.format(superuser_id),
-            data = json.dumps({'username': res_2.json['data']['username']}),
+            data = json.dumps({}),
             headers = headers   
         )       
 
@@ -138,11 +139,12 @@ class TestApiEndpoints(unittest.TestCase):
         superuser_id = 10201
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token'])
+                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_2.json['data']['username']
         }
         res_3 = self.client.get(
             'api/v1/superusers/{}'.format(superuser_id),
-            data = json.dumps({'username': res_2.json['data']['username']}),
+            data = json.dumps({}),
             headers = headers   
         )       
 
@@ -178,11 +180,12 @@ class TestApiEndpoints(unittest.TestCase):
         superuser_id = 'malicious input'
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token'])
+                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_2.json['data']['username']
         }
         res_3 = self.client.get(
             'api/v1/superusers/{}'.format(superuser_id),
-            data = json.dumps({'username': res_2.json['data']['username']}),
+            data = json.dumps({}),
             headers = headers   
         )       
 
@@ -216,14 +219,14 @@ class TestApiEndpoints(unittest.TestCase):
         # make a call to GET /superusers
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token'])
+                'Authorization':  "Bearer {}".format(res_2.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_2.json['data']['username']
         }
         res_3 = self.client.get(
             'api/v1/superusers',
-            data = json.dumps({'username': res_2.json['data']['username']}),
+            data = json.dumps({}),
             headers = headers   
         )       
-
         self.assertTrue(res_3.is_json, "Json not returned.")
     
     def test_endpoint_login_superusers_returns_json(self):
@@ -295,11 +298,12 @@ class TestApiEndpoints(unittest.TestCase):
         # make a call to POST /settings/config/members
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token'])
+                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_1.json['data']['username']
         }
         res_2 = self.client.post(
             'api/v1/settings/config/members',
-            data = json.dumps({'username': res_1.json['data']['username']}),
+            data = json.dumps({}),
             headers = headers   
         )
         
@@ -330,11 +334,12 @@ class TestApiEndpoints(unittest.TestCase):
         # make a call to POST /settings/config/members
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token'])
+                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_1.json['data']['username']
         }
         res_2 = self.client.post(
             'api/v1/settings/config/members',
-            data = json.dumps({'username': res_1.json['data']['username']}),
+            data = json.dumps({}),
             headers = headers   
         )
 
@@ -366,12 +371,12 @@ class TestApiEndpoints(unittest.TestCase):
         # make a call to POST /settings/config/members
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token'])
+                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_1.json['data']['username']
         }
         res_2 = self.client.post(
             'api/v1/settings/config/members',
             data = json.dumps({
-                'username': res_1.json['data']['username'],
                 "class_name": "",
                 "monthly_contrib_amount": ""                
             }),
@@ -409,12 +414,12 @@ class TestApiEndpoints(unittest.TestCase):
         }
         headers = {
                 'Content-Type' : 'application/json',
-                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token'])
+                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_1.json['data']['username']
         }
         res_2 = self.client.post(
             'api/v1/settings/config/members',
             data = json.dumps({
-                'username': res_1.json['data']['username'],
                 "class_name": "Test Class ABC",
                 "monthly_contrib_amount": 1550.00                
             }),

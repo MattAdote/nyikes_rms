@@ -30,9 +30,6 @@ def create_membership_class(access_token):
         return make_response(jsonify(data), data['status'])
 
     # check validity of request data
-    # tokens verified. so strip the token data from the request data
-    data.pop('username')
-    data.pop('user_token')
     res_valid_data = settings_config_members_validate_request_data(data)
 
     # process data if valid, else, return validation findings

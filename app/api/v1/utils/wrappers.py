@@ -10,11 +10,27 @@ def token_required(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
-        # add code to check the request content type and that data is supplied
+        auth_data = {}
+
+        # check that Authorization header is present and has a value
         if 'Authorization' not in request.headers or request.headers['Authorization'] == "":
             # Client seems unaware that Authorization is required.
             response_header = ["WWW-Authenticate", 'Bearer realm="NYIKES_RMS"']
 
+            response = make_response() 
+            response.status_code = 401
+            response.headers.set(response_header[0], response_header[1])
+            
+            return response
+        
+        # check that the rms custom header is present and has a value
+        if 'X-NYIKES-RMS-User' not in request.headers or request.headers['X-NYIKES-RMS-User'] == "":
+            # Client seems unaware that they should supply the username of the authenticated user
+            response_header = ["WWW-Authenticate",  'Bearer realm="NYIKES_RMS"'
+                                                    'error="invalid_request"; '
+                                                    'error_description="Header: \"X-NYIKES-RMS-User\" missing or null" '
+            ]
+            
             response = make_response() 
             response.status_code = 401
             response.headers.set(response_header[0], response_header[1])
@@ -33,12 +49,14 @@ def token_required(f):
         token = parse_auth_header(request.headers['Authorization'])
         if 'headers' in token:
             return generate_authorization_error_response(token)
+        auth_data.update({"access_token":token})
         
-        # Add token to the request data
-        req_data.update({"user_token":token})
+        # extract username from Nyikes-RMS_User header
+        hdr_username = request.headers['X-NYIKES-RMS-User']
+        auth_data.update({"hdr_username":hdr_username})
         
         # Parse the token
-        token_payload = parse_token(req_data)
+        token_payload = parse_token(auth_data)
         if 'headers' in token_payload:
             return generate_authorization_error_response(token_payload)
         else:
@@ -48,22 +66,9 @@ def token_required(f):
     return decorated
 
 def parse_token(json_data):
-    valid_req_data = validate_request_data([json_data], ['username', 'user_token'])
-    if 'error' in valid_req_data:
-        www_authenticate_info =  {
-            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
-                                    'error="invalid_request"; '
-                                    'error_description="{}" '.format(valid_req_data['error'])
-        }
-        response = {'status' : 400}
-        response.update({"headers": www_authenticate_info })
-        return response
-    
-    token = valid_req_data['user_token']
-            
     # Decode the supplied access token
     try:
-        decoded_token = jwt.decode(token, os.getenv('SECRET'))
+        decoded_access_token = jwt.decode(json_data['access_token'], os.getenv('SECRET'))
     except Exception as e:
         # There's a problem with the token
         www_authenticate_info = {
@@ -76,8 +81,8 @@ def parse_token(json_data):
         return response
     
     # Verify that the username in decoded token matches
-    # the username supplied with the token
-    if valid_req_data['username'] != decoded_token['username']:
+    # the username supplied in the header
+    if json_data['hdr_username'] != decoded_access_token['username']:
         www_authenticate_info =  {
             "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
                                     'error="invalid_request"; '
@@ -89,7 +94,7 @@ def parse_token(json_data):
 
     # pass the decoded token back to the view function
     kwargs = {
-        "access_token" : decoded_token
+        "access_token" : decoded_access_token
     }
 
     return kwargs
@@ -98,7 +103,7 @@ def parse_auth_header(auth_header):
     """
         Parses the auth header to check for token
         
-        :param the request object
+        :param the Authorization header
 
         :returns the jwt token
     """
