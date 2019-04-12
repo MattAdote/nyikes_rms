@@ -1,13 +1,17 @@
+# project imports
+from marshmallow import fields
+
+# local imports
 from app import ma
-from . dbmodels import db, BaseModel, UserModel
+from .dbmodels import db, BaseModel, UserModel
 
 class Member(BaseModel, UserModel):
     """
         Model for a member
     """
-    
+
     class_id = db.Column(db.Integer, db.ForeignKey('membership_class.id'))
-    
+
     first_name = db.Column(db.String(75), nullable=False)
     middle_name = db.Column(db.String(75), nullable=True)
     last_name = db.Column(db.String(75), nullable=False)
@@ -21,12 +25,29 @@ class Member(BaseModel, UserModel):
             if prop not in Member.initial_attributes:
                 raise Exception('Received unexpected property: {}'.format(prop))
         super().__init__(**member_properties)
+        
+        self.class_name = '' # This is a bug workaround.
 
-        # self.first_name = member_properties['first_name']
-        # self.middle_name = member_properties['middle_name']
-        # self.last_name = member_properties['last_name']
-        # self.email = member_properties['email']
-        # self.phone_number = member_properties['phone_number']
+        # The bug in question is to do with the Marshmallow serializer.
+        # When 'fields' property is set in class Meta, then I am unable
+        # to dynamically add the class_name attribute to the MemberSchema.
+        # What happens is that the attribute is totally excluded from the
+        # schema.(load|dump) output.
+        # When I use any of the other options as specified in the online
+        # documentation at
+        # (https://marshmallow.readthedocs.io/en/3.0/api_reference.html#marshmallow.Schema.Meta)
+        # then ALL of the attributes of the instantiated Member class are
+        # included in the output.
+        # I wasted about 4 hours trying to figure this out on 
+        # Fri, 12-Apr-2019 from 6:00 PM EAT || 1800 Hrs GMT +0300
+        # The Aha! moment cam about when I perused the documentation at
+        # (https://flask-marshmallow.readthedocs.io/en/latest/)
+        # and realized that the flask-marshmallow library is probably
+        # the culprit in my case in that it does not properly support the
+        # native marshmallow behaviour.
+        # So this workaround allows me to declare the class_name attribute
+        # for the Member class and therefore make it available to the
+        # schema for me to dynamically manipulate.
     
     @staticmethod
     def get_all():
@@ -34,9 +55,15 @@ class Member(BaseModel, UserModel):
     
 # Member schema
 class MemberSchema(ma.ModelSchema):
+    class_name = fields.Method("set_the_class_name")
     class Meta:
         model = Member
-        fields = ['id', 'first_name', 'middle_name', 'last_name', 'email', 'phone_number']
+        fields = ['id', 'first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'class_name']
+
+    def set_the_class_name(self, obj_member):
+        return  obj_member.membership_class.class_name \
+                if obj_member.membership_class is not None and hasattr(obj_member, 'membership_class') \
+                else 'Not Assigned'
 
 # Init schema
 member_schema = MemberSchema(strict=True)

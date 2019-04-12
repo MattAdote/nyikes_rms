@@ -431,6 +431,225 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertEqual(res_2.json['data']['class_name'], input_data['class_name'], 'class_name supplied Not class_name returned')
         self.assertEqual(res_2.json['data']['monthly_contrib_amount'], input_data['monthly_contrib_amount'], 'monthly_contrib_amount supplied Not monthly_contrib_amount returned')
 
+    def test_endpoint_post_members_returns_json(self):
+        """Test API endpoint is reachable and returns json"""
+        
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+
+        # Login the superuser
+        res_1 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        # create membership class
+        input_2 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }
+        
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_1.json['data']['username']
+        }
+        # make a call to POST /settings/config/members
+        res_2 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_2),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to POST /members
+        input_3 = {
+            "class_name" : res_2.json['data']['class_name'],
+            "first_name" : "Test First Name",
+            "middle_name" : "Jaribu la kati", 
+            "last_name" : "Test last name", 
+            "email" : "testmember@testdomain.com", 
+            "phone_number" : "0700123456"
+        }
+        res_3 = self.client.post(
+            'api/v1/members',
+            headers = headers,
+            content_type = 'application/json',
+            data = json.dumps({}),
+        )
+
+        # confirm that json received
+        self.assertTrue(res_3.is_json, "Json not returned.")
+    
+    def test_endpoint_post_members_returns_error_on_incorrect_content_tyoe(self):
+        """Test API endpoint returns error if incorrect or no content type given """
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+
+        # Login the superuser
+        res_1 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        
+        # make a call to POST /members
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_1.json['data']['username']
+        }
+        res_2 = self.client.post(
+            'api/v1/members',
+            data = json.dumps({}),
+            headers = headers   
+        )
+
+        self.assertIn('error', res_2.json, 'Error not Returned')
+
+        self.assertEqual(400, res_2.status_code)
+
+    def test_endpoint_post_members_returns_error_if_required_field_empty(self):
+        """Test API endpoint returns error if request fields are empty """
+
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+
+        # Login the superuser
+        res_1 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        
+        # create membership class
+        input_2 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }
+        
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_1.json['data']['username']
+        }
+        # make a call to POST /settings/config/members
+        res_2 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_2),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to POST /members
+        input_3 = {
+            "class_name" : res_2.json['data']['class_name'],
+            "first_name" : "Test First Name",
+            "middle_name" : "Jaribu la kati", 
+            "last_name" : "", 
+            "email" : "testmember@testdomain.com", 
+            "phone_number" : "0700123456"
+        }
+
+        res_3 = self.client.post(
+            'api/v1/members',
+            data = json.dumps(input_3),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        self.assertIn('error', res_3.json)
+        self.assertEqual(400, res_3.status_code)
+
+    def test_endpoint_post_members_returns_new_member_record_with_id(self):
+        """Test API endpoint returns newly created member record with id """
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+
+        # Login the superuser
+        res_1 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+        
+        # create membership class
+        input_2 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }
+        
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(res_1.json['data']['access_token']),
+                'X-NYIKES-RMS-User' : res_1.json['data']['username']
+        }
+        # make a call to POST /settings/config/members
+        res_2 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_2),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to POST /members
+        input_3 = {
+            "class_name" : res_2.json['data']['class_name'],
+            "first_name" : "Test First Name",
+            "middle_name" : "Jaribu la kati", 
+            "last_name" : "Test last name", 
+            "email" : "testmember@testdomain.com", 
+            "phone_number" : "0700123456"
+        }
+
+        res_3 = self.client.post(
+            'api/v1/members',
+            data = json.dumps(input_3),
+            headers = headers,
+            content_type = 'application/json'
+        )
+        # make the assertions
+        self.assertIn('id', res_3.json['data'])
+        self.assertEqual(res_3.json['data']['first_name'], input_3['first_name'], 'first_name returned Not first_name supplied ')
+        self.assertEqual(res_3.json['data']['middle_name'], input_3['middle_name'], 'middle_name supplied Not middle_name returned')
+        self.assertEqual(res_3.json['data']['last_name'], input_3['last_name'], 'last_name returned Not last_name supplied')
+        self.assertEqual(res_3.json['data']['email'], input_3['email'], 'email returned Not email supplied')
+        self.assertEqual(res_3.json['data']['phone_number'], input_3['phone_number'], 'monthly_contrib_amount returned Not monthly_contrib_amount supplied')
+        self.assertEqual(res_3.json['data']['class_name'], input_3['class_name'], 'class_name returned Not class_name supplied')
+
+
 
     def tearDown(self):
         """teardown all initialized variables."""

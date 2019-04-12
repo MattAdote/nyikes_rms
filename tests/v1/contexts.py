@@ -13,9 +13,11 @@ from app.api.v1.models import   BaseModel, UserModel, \
                                 Member, member_schema, \
                                 MembershipClass, membership_class_schema
 
-from app.api.v1.views.superusersview import verify_credentials, start_session, end_session, \
-                                            generate_token, validate_token
+from app.api.v1.views.superusersview    import  verify_credentials, start_session, end_session, \
+                                                generate_token, validate_token
+from app.api.v1.views.membersview       import  save as save_new_member
 
 from app.api.v1.utils import    validate_request_data, validate_route_param, invalid_param, check_is_empty, \
                                 parse_token, parse_auth_header, \
                                 endpoint_validate_user_token, endpoint_parse_access_token_payload
+
