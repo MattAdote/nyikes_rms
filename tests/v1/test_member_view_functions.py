@@ -1,12 +1,12 @@
 import unittest
 # import os, datetime, jwt
-import json, pdb
+import json, xlsxwriter, io,  pdb
 
 from .contexts import   create_api_server, db, \
                         BaseModel, \
                         SuperUser, \
-                        MembershipClass, \
-                        save_new_member
+                        MembershipClass, member_classes_schema, \
+                        save_new_member, get_membership_class_records, generate_members_file 
 
 class TestMemberViewFunctions(unittest.TestCase):
     """This class represents the member view functions test case"""
@@ -18,6 +18,8 @@ class TestMemberViewFunctions(unittest.TestCase):
         self.client = self.app.test_client()
         self.superuser = SuperUser
         self.save_new_member = save_new_member
+        self.get_membership_class_records = get_membership_class_records
+        self.generate_members_file = generate_members_file
 
         self.input_member_record = {
             "first_name": "LaKwanza",
@@ -92,6 +94,87 @@ class TestMemberViewFunctions(unittest.TestCase):
         self.assertEqual(output['data']['phone_number'], expected_output['data']['phone_number'], 'monthly_contrib_amount returned Not monthly_contrib_amount supplied')
         self.assertEqual(output['data']['class_name'], expected_output['data']['class_name'], 'class_name returned Not class_name supplied')
 
+    def test_function_get_membership_class_records_returns_error_if_no_records_found(self):
+        """ 
+            Tests that the function to get membership class records returns
+            an error if no membership class records are found
+        """
+
+        expected_output = {
+            "status": 404,
+            "error" : "No membership class records defined"
+        }
+
+        with self.app.app_context():
+            # test the function
+            output = self.get_membership_class_records()
+
+        # make the assertions
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('error', output, 'error key is missing in output')
+
+        self.assertTrue(
+            all(item in output.items() for item in expected_output.items()), 
+            'Output returned is not equal to expected output: \n \
+            output = "{}" \n INSTEAD OF \n "{}" \n '.format(output, expected_output)             
+        )
+    
+    def test_function_get_membership_class_records_returns_list_of_dictionary_records(self):
+        """ 
+            Tests that the function to get membership class records returns
+            a list of dictionary records containing the membershipclass records
+        """
+
+        with self.app.app_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class2 = MembershipClass(class_name='Test Class 2', monthly_contrib_amount=1050.00)
+            
+            obj_membership_class.save()
+            obj_membership_class2.save()
+
+            obj_membership_classes = MembershipClass.query.all()
+            membership_class_records = member_classes_schema.dump(obj_membership_classes).data
+
+            # 2. Define the expected output
+            expected_output = membership_class_records
+
+            # 3. test the function
+            output = self.get_membership_class_records()
+
+        # pdb.set_trace()
+        # make the assertions
+        assert type(output) == list
+        assert type(output[0]) == dict        
+
+        self.assertEqual(output, expected_output, "Output received NOT Equal to Expected Output")
+
+    def test_function_generate_member_file_creates_xlsx_file(self):
+        """ 
+            Tests that the function to get membership class records returns
+            an error if no membership class records are found
+        """
+
+        with self.app.app_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class2 = MembershipClass(class_name='Test Class 2', monthly_contrib_amount=1050.00)
+            
+            obj_membership_class.save()
+            obj_membership_class2.save()
+            
+            # pdb.set_trace()
+            # 2. test the function
+            output = self.generate_members_file()
+
+        # pdb.set_trace()
+        # make the assertions
+        self.assertIn('output_file', output)
+        self.assertIn('filename', output)
+
+        assert type(output['output_file']) == io.BytesIO
+        assert type(output['filename']) == str
+    
     def tearDown(self):
         """teardown all initialized variables."""
         with self.app.app_context():

@@ -32,4 +32,4 @@ class MembershipClassSchema(ma.ModelSchema):
 
 # Init schema
 membership_class_schema = MembershipClassSchema(strict=True)
-member_classes_schema = MembershipClassSchema(many=True, strict=True)
+member_classes_schema = MembershipClassSchema(many=True)

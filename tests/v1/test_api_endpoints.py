@@ -1,4 +1,4 @@
-import unittest
+import unittest, pytest
 import os
 import json, pdb
 
@@ -16,6 +16,37 @@ class TestApiEndpoints(unittest.TestCase):
         with self.app.app_context():
             # create all tables
             db.create_all()
+
+    @pytest.fixture
+    def getLoggedInSuperuser(self, request):
+        """
+            This sets the loggedInSuperuser attribute to the
+            TestApiEndpoints class so that the test functions
+            can have access to the access_token and username
+            of a logged in Superuser
+        """
+        
+        self.setUp()
+        # Create new superuser first
+        input_1 = {
+                    "username": "test_superuser",
+                    "password": "super123"                
+        }
+        self.client.post(
+            'api/v1/superusers',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+
+        # Login the superuser
+        res_1 = self.client.post(
+            'api/v1/superusers/login',
+            data = json.dumps(input_1),
+            content_type = 'application/json'
+        )
+
+        # Assign the logged in superuser to the class
+        request.cls.loggedInSuperuser = res_1.json['data']
 
     def test_endpoint_default_returns_json(self):
         """Test API endpoint is reachable and returns json"""
@@ -649,7 +680,89 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertEqual(res_3.json['data']['phone_number'], input_3['phone_number'], 'monthly_contrib_amount returned Not monthly_contrib_amount supplied')
         self.assertEqual(res_3.json['data']['class_name'], input_3['class_name'], 'class_name returned Not class_name supplied')
 
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_get_members_file_returns_error_on_no_membershipclass_records(self):
+        """
+            Test API endpoint returns error if no membership class records have been 
+            defined yet.
+        """
+        expected_output = {
+            "status": 404,
+            "error" : "No membership class records defined"
+        }
+        # make a call to GET /members/file
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+        res_3 = self.client.get(
+            'api/v1/members/file',
+            data = json.dumps({}),
+            headers = headers   
+        )
+        # Make the assertions
+        self.assertTrue(res_3.is_json, "Json not returned.")
+        self.assertIn('status', res_3.json, 'status key missing in output')
+        self.assertIn('error', res_3.json, 'error key is missing in output')
 
+        self.assertTrue(
+            all(item in res_3.json.items() for item in expected_output.items()), 
+            'Output returned is not equal to expected output: \n \
+            output = "{}" \n INSTEAD OF \n "{}" \n '.format(res_3.json, expected_output)             
+        )
+
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_get_members_file_returns__400_status_code_on_incorrect_content_tyoe(self):
+        """Test API endpoint returns 401 status code if incorrect or no content type given """
+        headers = {
+                # 'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+        res = self.client.get(
+            'api/v1/members/file',
+            data = json.dumps({}),
+            headers = headers 
+        )
+
+        self.assertEqual(400, res.status_code)
+    
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_get_members_file_returns__xlsx_file_with_correct_content_type(self):
+        """Test API endpoint returns 401 status code if incorrect or no content type given """
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+
+        # create membership class
+        input_1 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }        
+        # make a call to POST /settings/config/members
+        res_1 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_1),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to GET /members/file
+        res_2 = self.client.get(
+            'api/v1/members/file',
+            data = json.dumps({}),
+            headers = headers 
+        )
+
+        # make the assertions
+        self.assertEqual(res_2.content_type, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        self.assertIn('content-disposition', res_2.headers)
+        self.assertIn('attachment', res_2.headers['content-disposition'])
+
+        assert type(res_2.data) == bytes
 
     def tearDown(self):
         """teardown all initialized variables."""

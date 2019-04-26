@@ -1,11 +1,12 @@
 import  datetime, time, \
         jwt, \
-        requests
+        requests, \
+        xlsxwriter, io
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # project specific imports
-from flask import   Blueprint, request, jsonify, make_response, \
+from flask import   Blueprint, request, jsonify, make_response, send_file, \
                     current_app as app
 
 # local imports
@@ -16,6 +17,8 @@ from app.api.v1.utils import    parse_request, validate_request_data, \
 
 from app.api.v1.models import   MembershipClass, \
                                 Member, member_schema, members_schema
+
+from . membersview_functions import generate_members_file
 
 # Define blueprint for members view
 members_view_blueprint = Blueprint('members_view', '__name__')
@@ -160,3 +163,42 @@ def members_validate_request_data(req_data):
 
     # send sanitized_data list to actual validation function and return response
     return validate_request_data(sanitized_data, req_fields)
+
+@members_view_blueprint.route('/members/file', methods=['GET'])
+@token_required
+def get_members_file(access_token):
+    response = {}
+    data = {}
+    
+    # First, validate the user's token
+    user_token_payload = endpoint_validate_user_token(access_token)
+    if 'headers' in user_token_payload:
+        return generate_authorization_error_response(user_token_payload)
+
+    # Second, parse the request data to check content_type is correct.
+    # This is redundant because the content type was already checked
+    # when the acess token was being validated.
+    data = parse_request(request)
+    if type(data) == dict and 'error' in data:
+        return make_response(jsonify(data), data['status'])  
+
+    # Third, generate the members file and return
+    response = generate_members_file()
+
+    if "output_file" in response and type(response["output_file"]) == io.BytesIO:
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        
+        return send_file(
+            response["output_file"], 
+            mimetype=mimetype, 
+            as_attachment=True, 
+            attachment_filename=response["filename"],
+        )
+    elif 'error' in response:
+        return make_response(jsonify(response), response['status'])
+    else:
+        response = {
+            "status" : 500,
+            "error" : "A system error occurred while generating the file"
+        }
+        return make_response(jsonify(response), response['status'])
