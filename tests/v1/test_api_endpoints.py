@@ -4,7 +4,8 @@ import json, pdb
 
 from .contexts import create_api_server, db
 
-dirpath = os.getcwd()
+scriptpath = os.path.realpath(__file__)
+dirpath, filen = os.path.split(scriptpath)
 
 class TestApiEndpoints(unittest.TestCase):
     """This class represents the meetup test case"""

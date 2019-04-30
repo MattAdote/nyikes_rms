@@ -9,7 +9,8 @@ from .contexts import   create_api_server, db, \
                         save_new_member, get_membership_class_records, generate_members_file, \
                         process_uploaded_members_file 
 
-dirpath = os.getcwd()
+scriptpath = os.path.realpath(__file__)
+dirpath, filen = os.path.split(scriptpath)
 
 class TestMemberViewFunctions(unittest.TestCase):
     """This class represents the member view functions test case"""
@@ -243,7 +244,7 @@ class TestMemberViewFunctions(unittest.TestCase):
         }
     
         test_file_path = '{}/_resources/ex_member_records_no_new_records.xlsx'.format(dirpath)
-
+        
         with self.app.app_context():
             # test the function
             output = self.process_uploaded_members_file(test_file_path, expected_ws_name)
