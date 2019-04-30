@@ -4,6 +4,8 @@ import json, pdb
 
 from .contexts import create_api_server, db
 
+dirpath = os.getcwd()
+
 class TestApiEndpoints(unittest.TestCase):
     """This class represents the meetup test case"""
 
@@ -787,7 +789,7 @@ class TestApiEndpoints(unittest.TestCase):
             incorrect
         """
         expected_file_parameter = 'addNewMembersFile'
-        file_path = '_resources/ex_member_records.xlsx'
+        file_path = '{}/_resources/ex_member_records.xlsx'.format(dirpath)
         
         expected_output = {
             "status": 400,
@@ -828,7 +830,7 @@ class TestApiEndpoints(unittest.TestCase):
             missing
         """
         expected_file_parameter = 'addNewMembersFile'
-        file_path = '_resources/ex_member_records.xlsx'
+        file_path = '{}/_resources/ex_member_records.xlsx'.format(dirpath)
         expected_output = {
             "status": 400,
             "error": 'File parameter: \'{}\' not found'.format(expected_file_parameter)
@@ -869,7 +871,7 @@ class TestApiEndpoints(unittest.TestCase):
             Tests that the function returns an error if mimetype of uploaded file is
             not the excel xlsx one.
         """
-        file_path = '_resources/ex_non_excel_file.docx'
+        file_path = '{}/_resources/ex_non_excel_file.docx'.format(dirpath)
         expected_file_parameter = 'addNewMembersFile'
         expected_file_mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         expected_output = {
@@ -910,7 +912,7 @@ class TestApiEndpoints(unittest.TestCase):
     def test_endpoint_post_members_file_returns__xlsx_file_with_correct_content_type(self):
         """Test API endpoint returns updated xlsx file with the ms-excel content-type """
         
-        file_to_upload = '_resources/ex_member_records.xlsx'
+        file_to_upload = '{}/_resources/ex_member_records.xlsx'.format(dirpath)
         expected_file_parameter = 'addNewMembersFile'
         
         headers = {

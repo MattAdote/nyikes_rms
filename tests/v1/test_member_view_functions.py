@@ -1,5 +1,5 @@
 import unittest
-# import os, datetime, jwt
+import os
 import json, xlsxwriter, io,  pdb
 
 from .contexts import   create_api_server, db, \
@@ -8,6 +8,8 @@ from .contexts import   create_api_server, db, \
                         MembershipClass, member_classes_schema, \
                         save_new_member, get_membership_class_records, generate_members_file, \
                         process_uploaded_members_file 
+
+dirpath = os.getcwd()
 
 class TestMemberViewFunctions(unittest.TestCase):
     """This class represents the member view functions test case"""
@@ -188,7 +190,7 @@ class TestMemberViewFunctions(unittest.TestCase):
             "error": "Worksheet: {} is missing from uploaded file".format(expected_ws_name)
         }
     
-        test_file_path = '_resources/ex_member_records_wrong_data.xlsx'
+        test_file_path = '{}/_resources/ex_member_records_wrong_data.xlsx'.format(dirpath)
 
         with self.app.app_context():
             # test the function
@@ -215,7 +217,7 @@ class TestMemberViewFunctions(unittest.TestCase):
             "error": "Columns: {} missing from Worksheet: {}".format(removed_column_names, expected_ws_name)
         }
     
-        test_file_path = '_resources/ex_uploaded_member_records_missing_column_names.xlsx'
+        test_file_path = '{}/_resources/ex_uploaded_member_records_missing_column_names.xlsx'.format(dirpath)
 
         with self.app.app_context():
             # test the function
@@ -240,7 +242,7 @@ class TestMemberViewFunctions(unittest.TestCase):
             "error": "No records to import from Worksheet: {}".format(expected_ws_name)
         }
     
-        test_file_path = '_resources/ex_member_records_no_new_records.xlsx'
+        test_file_path = '{}/_resources/ex_member_records_no_new_records.xlsx'.format(dirpath)
 
         with self.app.app_context():
             # test the function
