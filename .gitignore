@@ -109,3 +109,4 @@ venv.bak/
 # Custom
 db/phpmyadmin_db_layout_nyikes_rms_08Feb20191707.png
 app/api/v1/views/test_1.py
+_scrapyard/

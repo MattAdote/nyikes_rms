@@ -1,6 +1,121 @@
-import xlsxwriter, io
+import io, xlsxwriter, pandas as pd, stringcase as sc
 
-from app.api.v1.models import   MembershipClass, member_classes_schema
+from app.api.v1.models import   Member, member_schema, members_schema, \
+                                MembershipClass, member_classes_schema
+from app.api.v1.utils import    check_is_empty, validate_request_data
+
+def save_member_record(member_record):
+    """Sends the member record to be added to storage."""
+    
+    # first check that member doesn't already exist
+    existing_member = Member.query.filter_by(email=member_record['email']).first()
+
+    if existing_member is not None:
+        return {
+            "status":400,
+            "error": "Cannot add new member. Email: '{}' already exists.".format(member_record['email'])
+        }
+
+    # flow
+    # after confirming member is unique
+    # check that class_name is valid
+    # if not valid. return error
+    # pop off the class_name from the member record
+    # add new attribute membership_class = obj MembershipClass of supplied class name
+    # save the record
+    if 'class_name' in member_record and member_record['class_name'] != "":
+        try:
+            membership_class = MembershipClass.query.filter_by(class_name=member_record['class_name']).first()
+        except:
+            return {
+                "status":503,
+                "error":"Database error encountered when looking up supplied class_name"
+            }
+        if not membership_class:
+            return {
+                "status":404,
+                "error":"Class name: {} not found".format(member_record['class_name'])
+            }
+        member_record.pop('class_name')
+        member_record.update({'membership_class': membership_class})
+
+    # Save the new item
+    try:
+        member = Member(**member_record)
+    except:
+        return {
+                    "status":503,
+                    "error":"Encountered error initializing new member object from supplied data"
+        }
+    try:
+        member.save()
+    except:
+        return {
+                    "status":503,
+                    "error":"Database error encountered when saving new member record"
+        }
+    # restore class_name attribute if it had been removed
+    if 'membership_class' in member_record:
+        member_record.pop('membership_class')
+        member_record.update({'class_name': membership_class.class_name})
+
+    # Get the newly saved item
+    new_member_record = member_schema.dump(member).data
+    # Confirm that the new item matches the input that was supplied
+    if all(item in new_member_record.items() for item in member_record.items()):
+        return {
+            "status": 201,
+            "data": new_member_record
+        }
+    else:
+        # I don't expect this code to be ever reached because unless a weird error
+        # occurs then the created member record will always have the attributes
+        # contained in the original data supplied
+        return {
+            "status": 503,
+            "error": 'An error occurred while saving the record.'
+        }
+
+def members_validate_request_data(req_data):
+    """Validates the member data received"""
+    # data = {
+    #             "first_name"      : "", required
+    #             "last_name"       : "", required  
+    #             "email"           : "", required  
+    #             "phone_number"    : "", required 
+    #             "middle_name"     : "", not required  
+    #             "class_name"      : "", not required
+    # }   
+    #
+    # parse the recevied data to check for empty or none
+    received_data = check_is_empty(req_data)
+    # exit if indeed data is empty
+    if 'error' in received_data:
+        return received_data    
+    # Specify the required and non required fields
+    req_fields = ['first_name', 'last_name', 'email', 'phone_number']
+    non_req_fields = ['middle_name', 'class_name']
+    # Initialize list to hold processed fields
+    sanitized_data = []
+
+    # get the required fields' data and put in own dictionary
+    dict_req_fields = {}
+    for field in req_fields:
+        if field in received_data:
+            dict_req_fields.update({field: received_data[field]})
+    # append required fields dictionary to sanitized_data list
+    sanitized_data.append(dict_req_fields)
+
+    # get the non required fields data and put in own dictionary
+    dict_non_req_fields = {}
+    for field in non_req_fields:
+        if field in received_data:
+            dict_non_req_fields.update({field: received_data[field]})
+    # append non required fields dictionary to sanitized_data list
+    sanitized_data.append(dict_non_req_fields)
+
+    # send sanitized_data list to actual validation function and return response
+    return validate_request_data(sanitized_data, req_fields)
 
 def generate_members_file():
     """
@@ -14,7 +129,7 @@ def generate_members_file():
     """
     num_records = 0
     records_count = 0
-    start_table_row = 2
+    start_table_row = 1
     start_data_row = start_table_row + 1
     
     data_rows = []
@@ -98,7 +213,6 @@ def generate_members_file():
                 
             }
         )
-
     # close the workbook    
     workbook.close()
 
@@ -127,3 +241,139 @@ def get_membership_class_records():
     
     # load member classes schema
     return member_classes_schema.dump(membership_class).data
+
+def get_uploaded_members_file(req, expected_file_parameter, expected_file_mime_type):
+    """ This returns the uploaded members file contained in the request """
+
+    if expected_file_parameter not in req.files:
+        response = {
+            "status": 400,
+            "error": 'File parameter: \'{}\' not found'.format(expected_file_parameter)
+        }
+        return response
+    elif req.files[expected_file_parameter] == None or req.files[expected_file_parameter] == '':
+        response = {
+            "status": 400,
+            "error": 'No data supplied!'
+        }
+        return response
+    else:
+        uploaded_file = req.files[expected_file_parameter]
+        # confirm that correct file is received!
+        if uploaded_file.mimetype != expected_file_mime_type:
+            response = {
+                "status": 400,
+                "error": 'Invalid file uploaded. File not .xlsx file'
+            }
+            return response
+        # So the mimetype checks but this is not a fool proof method
+        # This is because the mimetypes are arrived at on the basis
+        # of the file extension. So if I take a word document and
+        # rename its extension to .xlsx then the document's mimetype
+        # would change to the excel mimetype.
+        # Therefore, must take care to vet the contents of the file
+        
+        return uploaded_file
+
+def process_uploaded_members_file(uploaded_members_file, expected_sheet_name):
+    """
+        Imports data from the uploaded members file into the RMS
+    """
+
+    # TARGET_FIELD_NAMES = ['first_name', 'last_name', 'email', 'phone_number', 'middle_name', 'class_name']
+    EXPECTED_COLUMN_NAMES = ['First Name', 'Middle Name', 'Last Name', 'Membership Class', 'Phone Number', 'Email']
+
+    response = {}
+    
+    missing_columns = []
+    db_import_result = []
+    df = pd.ExcelFile(uploaded_members_file)
+
+    if expected_sheet_name not in df.sheet_names:
+        response.update({
+            'status':400,
+            'error': "Worksheet: {} is missing from uploaded file".format(expected_sheet_name)
+        })
+        return response
+    
+    ws_new_member_records = df.parse(expected_sheet_name)
+
+    file_columns = ws_new_member_records.columns
+    for expected_column in EXPECTED_COLUMN_NAMES:
+        if expected_column not in file_columns.to_list():
+            missing_columns.append(expected_column)
+    if len(missing_columns) > 0:
+        response.update({
+            'status':400,
+            'error': "Columns: {} missing from Worksheet: {}".format(missing_columns, expected_sheet_name)
+        })
+        return response
+    
+    num_new_records_found = len(ws_new_member_records)
+    if num_new_records_found == 0:
+        response.update({
+            'status':400,
+            'error': "No records to import from Worksheet: {}".format(expected_sheet_name)
+        })
+        return response
+
+    # all ok, so now convert the column names to match the model field names
+    # rename membership_class column
+    ws_new_member_records.rename(
+        columns={'Membership Class':'Class Name'},
+        inplace=True
+    )
+    # convert column names to snake case
+    for column in ws_new_member_records.columns:
+        ws_new_member_records.rename(
+            columns={
+                column:sc.snakecase(column).replace('__', '_') # replace is due to identified bug. Tested for.
+            },
+            inplace=True
+        )
+    # replace any 'NaN' values with empty ''
+    ws_new_member_records.fillna('', inplace=True)
+    # save each individual record
+    for index, row in ws_new_member_records.iterrows():
+        # first convert phone_number field to string
+        row['phone_number'] = str(row['phone_number'])
+        # next, send to storage
+        db_response = save_member_record(row.to_dict())
+        # record the response against the record
+        if 'error' in db_response:
+            db_import_result.append(db_response['error'])
+        else:
+            db_import_result.append('Success')
+    
+    ws_new_member_records['DB Import Result'] = db_import_result
+
+    # so now we start on preparing the df for output
+    # 1. Return the column names to 'Title Case'
+    for column in ws_new_member_records.columns:
+        if column != 'DB Import Result':
+            ws_new_member_records.rename(
+                columns={
+                    column:sc.titlecase(column) # this converts ok.
+                },
+                inplace=True
+            )
+    # 2. Revert the Class Name to Membership Class
+    ws_new_member_records.rename(
+        columns={'Class Name':'Membership Class'},
+        inplace=True
+    )
+    # 3. append modified dataframe to new sheet in uploaded file
+    with pd.ExcelWriter(uploaded_members_file, engine='openpyxl', mode='a') as writer:
+        ws_new_member_records.to_excel(writer, sheet_name='DB Import Results')
+        
+    output_file = io.BytesIO()
+    uploaded_members_file.seek(0) # go back to start of uploaded file
+    output_file.write(uploaded_members_file.read())
+    output_file.seek(0)
+    
+    response.update({
+        "output_file": output_file,
+        "filename": uploaded_members_file.filename
+    })    
+
+    return response

@@ -730,7 +730,7 @@ class TestApiEndpoints(unittest.TestCase):
     
     @pytest.mark.usefixtures("getLoggedInSuperuser")
     def test_endpoint_get_members_file_returns__xlsx_file_with_correct_content_type(self):
-        """Test API endpoint returns 401 status code if incorrect or no content type given """
+        """Test API endpoint returns .xlsx file with the ms-excel content-type """
         headers = {
                 'Content-Type' : 'application/json',
                 'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
@@ -756,6 +756,177 @@ class TestApiEndpoints(unittest.TestCase):
             data = json.dumps({}),
             headers = headers 
         )
+
+        # make the assertions
+        self.assertEqual(res_2.content_type, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        self.assertIn('content-disposition', res_2.headers)
+        self.assertIn('attachment', res_2.headers['content-disposition'])
+
+        assert type(res_2.data) == bytes
+
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_post_members_file_returns__400_status_code_on_incorrect_content_tyoe(self):
+        """Test API endpoint returns 401 status code if incorrect or no content type given """
+        headers = {
+                'Content-Type' : 'application/x-www-form-urlencoded-',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+        res = self.client.post(
+            'api/v1/members/file',
+            data = None,
+            headers = headers 
+        )
+
+        self.assertEqual(400, res.status_code)
+    
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_post_members_file_returns_error_if_expected_file_parameter_name_incorrect(self):
+        """ 
+            Tests that the function returns an error if expected file field name parameter is
+            incorrect
+        """
+        expected_file_parameter = 'addNewMembersFile'
+        file_path = '_resources/ex_member_records.xlsx'
+        
+        expected_output = {
+            "status": 400,
+            "error": 'File parameter: \'{}\' not found'.format(expected_file_parameter)
+        }
+        headers = {
+                # 'Content-Type' : 'application/x-www-form-urlencoded',
+                'Content-Type' : 'multipart/form-data',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }        
+        # make the call
+        fh = open(file_path, 'rb')
+        res = self.client.post(
+            'api/v1/members/file',
+            data = {
+                expected_file_parameter + 's':fh
+            },
+            headers = headers,
+        )
+        fh.close()
+        
+        # make the assertions
+        self.assertTrue(res.is_json, "Error not returned as JSON")
+        
+        # test the output
+        output = res.json
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('error', output, 'error key is missing in output')
+
+        self.assertEqual(output['status'], expected_output['status'])
+        self.assertEqual(output['error'], expected_output['error'])
+    
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_post_members_file_returns_error_if_expected_file_parameter_name_missing(self):
+        """ 
+            Tests that the function returns an error if expected file field name parameter is
+            missing
+        """
+        expected_file_parameter = 'addNewMembersFile'
+        file_path = '_resources/ex_member_records.xlsx'
+        expected_output = {
+            "status": 400,
+            "error": 'File parameter: \'{}\' not found'.format(expected_file_parameter)
+        }
+        
+        headers = {
+                'Content-Type' : 'multipart/form-data',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+                
+        # make the call
+        fh = open(file_path, 'rb')
+        res = self.client.post(
+            'api/v1/members/file',
+            data = {
+                'random parameter name':fh
+            },
+            headers = headers,
+        )
+        fh.close()
+        
+        # make the assertions
+        self.assertTrue(res.is_json, "Error not returned as JSON")
+        
+        # test the output
+        output = res.json
+        
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('error', output, 'error key is missing in output')
+
+        self.assertEqual(output['status'], expected_output['status'])
+        self.assertEqual(output['error'], expected_output['error'])
+
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_post_members_file_returns_error_if_uploaded_file_not_excel_mimetype(self):
+        """ 
+            Tests that the function returns an error if mimetype of uploaded file is
+            not the excel xlsx one.
+        """
+        file_path = '_resources/ex_non_excel_file.docx'
+        expected_file_parameter = 'addNewMembersFile'
+        expected_file_mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        expected_output = {
+            "status": 400,
+            "error": 'Invalid file uploaded. File not .xlsx file'
+        }
+        
+        headers = {
+                'Content-Type' : 'multipart/form-data',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+                
+        # make the call
+        fh = open(file_path, 'rb')
+        res = self.client.post(
+            'api/v1/members/file',
+            data = {
+                expected_file_parameter:fh
+            },
+            headers = headers,
+        )
+        fh.close()
+        
+        # make the assertions
+        self.assertTrue(res.is_json, "Error not returned as JSON")
+        
+        # test the output
+        output = res.json
+        
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('error', output, 'error key is missing in output')
+
+        self.assertEqual(output['status'], expected_output['status'])
+        self.assertEqual(output['error'], expected_output['error'])
+    
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_post_members_file_returns__xlsx_file_with_correct_content_type(self):
+        """Test API endpoint returns updated xlsx file with the ms-excel content-type """
+        
+        file_to_upload = '_resources/ex_member_records.xlsx'
+        expected_file_parameter = 'addNewMembersFile'
+        
+        headers = {
+                'Content-Type' : 'multipart/form-data',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+
+        fh = open(file_to_upload, 'rb')
+        # make a call to GET /members/file
+        res_2 = self.client.post(
+            'api/v1/members/file',
+            data = {expected_file_parameter:fh},
+            headers = headers 
+        )
+        fh.close()
 
         # make the assertions
         self.assertEqual(res_2.content_type, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

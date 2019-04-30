@@ -1,4 +1,4 @@
-allowed_content_types = ['application/x-www-form-urlencoded', 'application/json']
+allowed_content_types = ['application/x-www-form-urlencoded', 'application/json', 'multipart/form-data']
 
 def validate_request_data(request_data, required_fields_checklist):
     # request_data = [  {
@@ -100,17 +100,28 @@ def parse_request(req):
     returns the data contained in the request
     
     """
-    
     if req.content_type not in allowed_content_types:
-        response = {
-            'status': 400,
-            'error': 'Invalid Content_Type request header'
-        }
-        return response
+        if allowed_content_types[2] not in req.content_type:
+            response = {
+                'status': 400,
+                'error': 'Invalid Content_Type request header'
+            }
+            return response
+        else:
+            # we have multipart/form-data content-type
+            # pdb.set_trace()
+            if req.form != None and req.form != '':
+                # get the form data as dict
+                data = req.form.to_dict()
+            else:
+                # no data with request.
+                data = {}
     elif req.args:
+        # we're dealing with 'application/x-www-form-urlencoded'
         raw_data = req.args
         data = raw_data.to_dict()
     else:
+        # pdb.set_trace()
         # content-type is ok and no url data has been set, try for json data present
         # if content-type is application/json but no data is supplied
         # then the exception will be raised otherwise if the content-type is

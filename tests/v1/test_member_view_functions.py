@@ -6,7 +6,8 @@ from .contexts import   create_api_server, db, \
                         BaseModel, \
                         SuperUser, \
                         MembershipClass, member_classes_schema, \
-                        save_new_member, get_membership_class_records, generate_members_file 
+                        save_new_member, get_membership_class_records, generate_members_file, \
+                        process_uploaded_members_file 
 
 class TestMemberViewFunctions(unittest.TestCase):
     """This class represents the member view functions test case"""
@@ -20,6 +21,7 @@ class TestMemberViewFunctions(unittest.TestCase):
         self.save_new_member = save_new_member
         self.get_membership_class_records = get_membership_class_records
         self.generate_members_file = generate_members_file
+        self.process_uploaded_members_file = process_uploaded_members_file
 
         self.input_member_record = {
             "first_name": "LaKwanza",
@@ -175,6 +177,82 @@ class TestMemberViewFunctions(unittest.TestCase):
         assert type(output['output_file']) == io.BytesIO
         assert type(output['filename']) == str
     
+    def test_function_process_uploaded_members_file_returns_error_on_members_sheet_missing(self):
+        """
+            Test that function returns error if the members informationn sheet is missing
+            from the Excel workbook.
+        """
+        expected_ws_name = "Member Info"
+        expected_output = {
+            "status": 400,
+            "error": "Worksheet: {} is missing from uploaded file".format(expected_ws_name)
+        }
+    
+        test_file_path = '_resources/ex_member_records_wrong_data.xlsx'
+
+        with self.app.app_context():
+            # test the function
+            output = self.process_uploaded_members_file(test_file_path, expected_ws_name)
+
+        # make the assertions
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('error', output, 'error key is missing in output')
+
+        self.assertEqual(output['status'], expected_output['status'], 'Output not equal to expected output')
+        self.assertEqual(output['error'], expected_output['error'], 'Output not equal to expected output')
+    
+    def test_function_process_uploaded_members_file_returns_error_on_column_names_missing(self):
+        """
+            Test that function returns error if the expected column names are missing
+            from the Members Info worksheet
+        """
+        expected_ws_name = 'Member Info'
+        expected_column_names = ['First Name', 'Middle Name', 'Last Name', 'Membership Class', 'Phone Number', 'Email']
+        removed_column_names = ['Middle Name', 'Email']
+
+        expected_output = {
+            "status": 400,
+            "error": "Columns: {} missing from Worksheet: {}".format(removed_column_names, expected_ws_name)
+        }
+    
+        test_file_path = '_resources/ex_uploaded_member_records_missing_column_names.xlsx'
+
+        with self.app.app_context():
+            # test the function
+            output = self.process_uploaded_members_file(test_file_path, expected_ws_name)
+
+        # make the assertions
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('error', output, 'error key is missing in output')
+
+        self.assertEqual(output['status'], expected_output['status'], 'Output not equal to expected output')
+        self.assertEqual(output['error'], expected_output['error'], 'Output recieved not equal to expected output')
+    
+    def test_function_process_uploaded_members_file_returns_error_on_zero_new_member_records(self):
+        """
+            Test that function returns error if there are no new member records in the worksheet
+        """
+        expected_ws_name = 'Member Info'
+        expected_column_names = ['First Name', 'Middle Name', 'Last Name', 'Membership Class', 'Phone Number', 'Email']
+
+        expected_output = {
+            "status": 400,
+            "error": "No records to import from Worksheet: {}".format(expected_ws_name)
+        }
+    
+        test_file_path = '_resources/ex_member_records_no_new_records.xlsx'
+
+        with self.app.app_context():
+            # test the function
+            output = self.process_uploaded_members_file(test_file_path, expected_ws_name)
+
+        # make the assertions
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('error', output, 'error key is missing in output')
+
+        self.assertEqual(output['status'], expected_output['status'], 'Output not equal to expected output')
+        self.assertEqual(output['error'], expected_output['error'], 'Output not equal to expected output')
+
     def tearDown(self):
         """teardown all initialized variables."""
         with self.app.app_context():
