@@ -39,13 +39,148 @@ class TestEndpointJwtFunctions(unittest.TestCase):
             },
             self.app.config['SECRET']
         )
+        member_access_token = jwt.encode(
+            {
+                "username": "dummy_username", # as above
+                "user_token":dummy_user_token.decode('UTF-8'),
+                "super":"False",
+                "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=3)
+            },
+            self.app.config['SECRET']
+        )
         # decode the access token payload
         self.access_token_payload = jwt.decode(access_token, self.app.config['SECRET'])
+        self.dummy_member_access_token_payload = jwt.decode(member_access_token, self.app.config['SECRET'])
 
         # binds the app to the current context
         with self.app.app_context():
             # create all tables
             db.create_all()
+
+    def test_function_endpoint_validate_user_token_returns_error_on_db_error_superuser_table_not_exist(self):
+        """
+            Test that endpoint_validate_user_token() returns error if the database raises an error
+            when looking up the Superuser and the superuser table doesn't exist
+        """
+        expected_output = {
+            "status" : 500,
+            "error": "Database reports problems getting the associated table. Inform System admin"
+        }
+
+        with self.app.app_context():
+            SuperUser.__table__.drop(db.get_engine())
+            output = self.validate_user_token(self.access_token_payload)
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+    
+    def test_function_endpoint_validate_user_token_returns_error_on_db_error_member_table_not_exist(self):
+        """
+            Test that endpoint_validate_user_token() returns error if the database raises an error
+            when looking up the Member and the member table doesn't exist
+        """
+        expected_output = {
+            "status" : 500,
+            "error": "Database reports problems getting the associated table. Inform System admin"
+        }
+
+        with self.app.app_context():
+            Member.__table__.drop(db.get_engine())
+            output = self.validate_user_token(self.dummy_member_access_token_payload)
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+    
+    def test_function_endpoint_validate_user_token_returns_error_if_superuser_username_not_found(self):
+        """
+            Test that endpoint_validate_user_token() returns error if the
+            superuser's username is not found in db.
+        """
+        expected_output = {}
+
+        www_authenticate_info =  {
+            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                    'error="invalid_request"; '
+                                    'error_description="username: {} does not exist" '.format(self.dummy_member_access_token_payload['username'])
+        }
+        expected_output.update({
+            "status" : 400,
+            "headers": www_authenticate_info
+        })
+
+        with self.app.app_context():
+            # output = self.validate_user_token(self.dummy_member_access_token_payload)
+            output = self.validate_user_token(self.access_token_payload)
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('headers', output, "headers info is missing!")
+        self.assertIn('WWW-Authenticate', output['headers'], "WWW-Authenticate key missing")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['headers'], "", "No headers information provided")
+        self.assertNotEqual(output['headers']['WWW-Authenticate'], "", "No error information provided")
+
+        self.assertIsInstance(output['headers']['WWW-Authenticate'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['headers'], expected_output['headers'], "Output received does not match expected")
+
+    def test_function_endpoint_validate_user_token_returns_error_if_member_username_not_found(self):
+        """
+            Test that endpoint_validate_user_token() returns error if the
+            superuser's username is not found in db.
+        """
+        expected_output = {}
+
+        www_authenticate_info =  {
+            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                    'error="invalid_request"; '
+                                    'error_description="username: {} does not exist" '.format(self.dummy_member_access_token_payload['username'])
+        }
+        expected_output.update({
+            "status" : 400,
+            "headers": www_authenticate_info
+        })
+
+        with self.app.app_context():
+            output = self.validate_user_token(self.dummy_member_access_token_payload)
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('headers', output, "headers info is missing!")
+        self.assertIn('WWW-Authenticate', output['headers'], "WWW-Authenticate key missing")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['headers'], "", "No headers information provided")
+        self.assertNotEqual(output['headers']['WWW-Authenticate'], "", "No error information provided")
+
+        self.assertIsInstance(output['headers']['WWW-Authenticate'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['headers'], expected_output['headers'], "Output received does not match expected")
 
     def test_function_endpoint_validate_user_token_returns_jwt_user_token_payload(self):
         """
@@ -490,7 +625,7 @@ class TestEndpointJwtFunctions(unittest.TestCase):
             # drop all tables
             db.session.remove()
             db.drop_all()
-
+            
 # Make the tests conveniently executable
 if __name__ == "__main__":
     unittest.main()    
