@@ -70,10 +70,14 @@ def save_member_record(member_record):
     else:
         # I don't expect this code to be ever reached because unless a weird error
         # occurs then the created member record will always have the attributes
-        # contained in the original data supplied
+        # contained in the original data supplied.
+        # Ordinarily, this is expected to be reached when the DB returns string
+        # instead of int e.g. phone_number in original data is int but DB returns
+        # a string 
         return {
-            "status": 503,
-            "error": 'An error occurred while saving the record.'
+            "status": 200,
+            "data": new_member_record,
+            "warning": "Warning: Datatype returned from DB may not match original."
         }
 
 def members_validate_request_data(req_data):
@@ -342,6 +346,8 @@ def process_uploaded_members_file(uploaded_members_file, expected_sheet_name):
         # record the response against the record
         if 'error' in db_response:
             db_import_result.append(db_response['error'])
+        elif 'warning' in db_response:
+            db_import_result.append(db_response['warning'])
         else:
             db_import_result.append('Success')
     
