@@ -1,4 +1,4 @@
-import jwt
+import jwt, pdb
 
 from app.api.v1.models import SuperUser, Member
 
@@ -23,6 +23,19 @@ def endpoint_validate_user_token(access_token_payload):
     else:
         user = Member.query.filter_by(username=access_token_payload['username']).first()
         
+    # Return a 400 error if the user is not found in the db
+    if user is None:
+        www_authenticate_info =  {
+            "WWW-Authenticate" :    'Bearer realm="NYIKES RMS"; '
+                                    'error="invalid_request"; '
+                                    'error_description="username: {} does not exist" '.format(access_token_payload['username'])
+        }
+        err_response.update({
+            "status" : 400,
+            "headers": www_authenticate_info
+        })
+        return err_response
+
     user_secret = DATE_FORMAT.format(user.lastLoggedOut)
     
     # Decode user's token

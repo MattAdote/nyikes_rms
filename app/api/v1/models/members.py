@@ -9,6 +9,7 @@ class Member(BaseModel, UserModel):
     """
         Model for a member
     """
+    username = db.Column(db.String(75), unique=True, nullable=True)
 
     class_id = db.Column(db.Integer, db.ForeignKey('membership_class.id'))
 
