@@ -18,11 +18,18 @@ def endpoint_validate_user_token(access_token_payload):
         return err_response
 
     # Get user from db
-    if access_token_payload['super'] == "True":
-        user = SuperUser.query.filter_by(username=access_token_payload['username']).first()
-    else:
-        user = Member.query.filter_by(username=access_token_payload['username']).first()
-        
+    try:
+        if access_token_payload['super'] == "True":
+            user = SuperUser.query.filter_by(username=access_token_payload['username']).first()
+        else:
+            user = Member.query.filter_by(username=access_token_payload['username']).first()
+    except:
+        err_response = {
+            "status" : 500,
+            "error": "Database reports problems getting the associated table. Inform System admin"
+        }
+        return err_response
+
     # Return a 400 error if the user is not found in the db
     if user is None:
         www_authenticate_info =  {
