@@ -109,7 +109,6 @@ def parse_request(req):
             return response
         else:
             # we have multipart/form-data content-type
-            # pdb.set_trace()
             if req.form != None and req.form != '':
                 # get the form data as dict
                 data = req.form.to_dict()
@@ -121,7 +120,6 @@ def parse_request(req):
         raw_data = req.args
         data = raw_data.to_dict()
     else:
-        # pdb.set_trace()
         # content-type is ok and no url data has been set, try for json data present
         # if content-type is application/json but no data is supplied
         # then the exception will be raised otherwise if the content-type is
@@ -135,9 +133,15 @@ def parse_request(req):
                 'error': "Request data invalid! No JSON data!"
             }
             return response
-
-    # all ok, so return the data
-    return data
+    
+    if data is None:
+        return {
+            'status': 400,
+            'error': "Request invalid! No data supplied!"
+        }
+    else:
+        # all ok, so return the data
+        return data
 
 def endpoint_error_response(request_data, processed_data):
     if 'error' in processed_data:
