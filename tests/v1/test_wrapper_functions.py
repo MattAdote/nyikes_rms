@@ -154,8 +154,8 @@ class TestWrapperFunctions(unittest.TestCase):
 
         # Get the superuser data that we expect to receive
         input_3 = {
-            "username": res_2.json['data']['username'],
-            "user_token":res_2.json['data']['access_token']
+            "hdr_username": res_2.json['data']['username'],
+            "access_token":res_2.json['data']['access_token']
         }
 
         output = self.parse_token(input_3)
@@ -255,8 +255,8 @@ class TestWrapperFunctions(unittest.TestCase):
         # Get the superuser data that we expect to receive
         spoofed_username = 'user_mjanja'
         input_3 = {
-            "username": spoofed_username,
-            "user_token":res_2.json['data']['access_token']
+            "hdr_username": spoofed_username,
+            "access_token":res_2.json['data']['access_token']
         }
         
         output = self.parse_token(input_3)
