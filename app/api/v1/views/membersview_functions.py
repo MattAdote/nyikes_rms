@@ -1,8 +1,16 @@
 import io, xlsxwriter, pandas as pd, stringcase as sc
 
+from flask import current_app as app, render_template, url_for
+from flask_mail import Message
+from itsdangerous import URLSafeTimedSerializer
+
+from app import mail
 from app.api.v1.models import   Member, member_schema, members_schema, \
                                 MembershipClass, member_classes_schema
-from app.api.v1.utils import    check_is_empty, validate_request_data
+from app.api.v1.utils import    check_is_empty, validate_request_data, \
+                                async_task
+
+SALT_ACTIVATE_ACCOUNT = 'new-account-activation-salt'
 
 def save_member_record(member_record):
     """Sends the member record to be added to storage."""
@@ -23,6 +31,8 @@ def save_member_record(member_record):
     # pop off the class_name from the member record
     # add new attribute membership_class = obj MembershipClass of supplied class name
     # save the record
+    # dispatch email to the email address in the member record
+    # return 
     if 'class_name' in member_record and member_record['class_name'] != "":
         try:
             membership_class = MembershipClass.query.filter_by(class_name=member_record['class_name']).first()
@@ -63,7 +73,7 @@ def save_member_record(member_record):
     new_member_record = member_schema.dump(member).data
     # Confirm that the new item matches the input that was supplied
     if all(item in new_member_record.items() for item in member_record.items()):
-        return {
+        response = {
             "status": 201,
             "data": new_member_record
         }
@@ -74,11 +84,34 @@ def save_member_record(member_record):
         # Ordinarily, this is expected to be reached when the DB returns string
         # instead of int e.g. phone_number in original data is int but DB returns
         # a string 
-        return {
+        response = {
             "status": 200,
             "data": new_member_record,
             "warning": "Warning: Datatype returned from DB may not match original."
         }
+    # Here, we send the activation email to the member in a new thread
+    # Primary reason is because this is a side effect of adding a new record
+    # Hence, no reason to tie up the response back to the client on the
+    # status of the add_new_record operation
+    activate_account_serializer = URLSafeTimedSerializer(app.config['SECRET'])
+    activation_link = url_for(
+        'members_view.activate_account',
+        token=activate_account_serializer.dumps(
+                new_member_record['email'], 
+                salt=SALT_ACTIVATE_ACCOUNT
+            ),
+        _external=True
+    )
+        
+    email_text_body = render_template('new_member_activate_account_email.txt', 
+        member=new_member_record,
+        link=activation_link
+    )
+    send_email(
+        "NYIKES RMS: ACCOUNT ACTIVATION", app.config['ADMIN_EMAILS'][0], new_member_record['email'],
+        email_text_body
+    )
+    return response
 
 def members_validate_request_data(req_data):
     """Validates the member data received"""
@@ -383,3 +416,20 @@ def process_uploaded_members_file(uploaded_members_file, expected_sheet_name):
     })    
 
     return response
+
+def send_email(subject, sender, recipient, text_body, html_body=None):
+    """
+        Sends email to the email address in the new member record
+    """
+    msg = Message(subject, sender=sender, recipients=[recipient])
+    msg.body = text_body
+    msg.html = '' if html_body is None else html_body
+    _send_async_email(app._get_current_object(), msg)
+
+@async_task
+def _send_async_email(fl_app, email_message):
+    """
+        This dispatches an email in a separate thread
+    """
+    with fl_app.app_context():
+        mail.send(email_message)

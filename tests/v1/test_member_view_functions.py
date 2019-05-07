@@ -2,12 +2,14 @@ import unittest
 import os
 import json, xlsxwriter, io,  pdb
 
+from flask import render_template
+
 from .contexts import   create_api_server, db, \
                         BaseModel, \
                         SuperUser, \
                         MembershipClass, member_classes_schema, \
                         save_new_member, get_membership_class_records, generate_members_file, \
-                        process_uploaded_members_file 
+                        process_uploaded_members_file, send_email                        
 
 scriptpath = os.path.realpath(__file__)
 dirpath, filen = os.path.split(scriptpath)
@@ -25,16 +27,17 @@ class TestMemberViewFunctions(unittest.TestCase):
         self.get_membership_class_records = get_membership_class_records
         self.generate_members_file = generate_members_file
         self.process_uploaded_members_file = process_uploaded_members_file
+        self.send_email = send_email
 
         self.input_member_record = {
             "first_name": "LaKwanza",
             "middle_name": "ZaKati",
             "last_name": "Mwishowe",
-            "email": "mimimember@test123.org",
+            "email": "ianadote@gmail.com",
             "phone_number": "0700987654",
             "class_name": "Test Class A B C"
         }
-
+        
         # binds the app to the current context
         with self.app.app_context():
             # create all tables
@@ -66,6 +69,34 @@ class TestMemberViewFunctions(unittest.TestCase):
             output = "{}" \n INSTEAD OF \n "{}" \n '.format(output, expected_output)             
         )
 
+    def test_function_send_email_sends_email_successfully(self):
+        """ 
+            Tests that the function to send an email is able to
+            successfully send an email 
+        """
+        with self.app.app_context():
+            email_text_body = render_template('new_member_activate_account_email.txt', 
+                member=self.input_member_record,
+                link='activation_link'
+            )
+            test_data = {
+                "subject" : "Test Email from Nyikes RMS",
+                "sender" : self.app.config['ADMIN_EMAILS'][0],
+                "recipient" : self.input_member_record['email'],
+                "text_body" : "{}".format(email_text_body)
+            }
+            
+            try:
+                self.send_email(
+                    test_data['subject'], 
+                    test_data['sender'], 
+                    test_data['recipient'], 
+                    test_data['text_body']            
+                )
+                assert True
+            except:
+                assert False
+
     def test_function_save_returns_new_member_record_with_id(self):
         """ 
             Tests that the function to save a new member record returns
@@ -80,7 +111,7 @@ class TestMemberViewFunctions(unittest.TestCase):
             }
         }
         expected_output['data'].update(self.input_member_record)
-        with self.app.app_context():
+        with self.app.test_request_context():
             # 1. create new membership_class record
             obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
             obj_membership_class.save()

@@ -120,3 +120,8 @@ def post_members_file(access_token):
             as_attachment=True, 
             attachment_filename=response["filename"],
         )
+
+@members_view_blueprint.route('/members/activate_account/<token>', methods=['GET'])
+def activate_account(token):
+    return ('<p>Hi, this is where you activate your account.<p>'
+            '<p>You will key in your desired username and password in a form to be displayed here')

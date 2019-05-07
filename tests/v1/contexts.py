@@ -18,7 +18,8 @@ from app.api.v1.views.superusersview            import  verify_credentials, star
 
 from app.api.v1.views.membersview               import  save as save_new_member
 from app.api.v1.views.membersview_functions     import  get_membership_class_records, generate_members_file, \
-                                                        get_uploaded_members_file, process_uploaded_members_file
+                                                        get_uploaded_members_file, process_uploaded_members_file, \
+                                                        send_email
 
 from app.api.v1.utils import    validate_request_data, validate_route_param, invalid_param, check_is_empty, \
                                 parse_token, parse_auth_header, \

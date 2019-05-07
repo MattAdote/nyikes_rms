@@ -1,8 +1,20 @@
 import os, jwt
+
+from threading import Thread
 from functools import wraps
 from flask import request, jsonify, make_response
 
 from .utility_functions import parse_request, validate_request_data
+
+def async_task(f):
+    """
+        Decorator to execute a function in a separate python thread
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        thr = Thread(target=f, args=args, kwargs=kwargs)
+        thr.start()
+    return decorated
 
 def token_required(f):
     """

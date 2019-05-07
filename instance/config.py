@@ -20,6 +20,7 @@ class TestingConfig(Config):
     DEBUG = True
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.getenv('TEST_DATABASE_URL')
+    MAIL_SUPPRESS_SEND = False
     
 class StagingConfig(Config):
     """Configurations for Staging."""
@@ -39,3 +40,16 @@ app_config = {
     'staging': StagingConfig,
     'production': ProductionConfig,
 }
+
+# Email server config settings
+MAIL_SERVER = 'smtp.gmail.com'
+MAIL_PORT = 465
+MAIL_USE_TLS = False
+MAIL_USE_SSL = True
+MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+# admin email list
+ADMINS =[
+    'info@nyikes.org',
+    'ianad.devtest@gmail.com'
+]
