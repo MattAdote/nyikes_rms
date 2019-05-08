@@ -13,6 +13,7 @@ class DevelopmentConfig(Config):
     """Configurations for Development."""
     ENV = 'development'
     DEBUG = True
+    ACTIVATION_TOKEN_EXPIRY_SECONDS = 300
 
 class TestingConfig(Config):
     """Configurations for Testing, with a separate test database."""
@@ -21,18 +22,19 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.getenv('TEST_DATABASE_URL')
     MAIL_SUPPRESS_SEND = False
-    
+    ACTIVATION_TOKEN_EXPIRY_SECONDS = 1
+
 class StagingConfig(Config):
     """Configurations for Staging."""
     ENV = 'staging'
     DEBUG = True
-
+    ACTIVATION_TOKEN_EXPIRY_SECONDS = 360
 
 class ProductionConfig(Config):
     """Configurations for Production."""
     DEBUG = False
     TESTING = False
-
+    ACTIVATION_TOKEN_EXPIRY_SECONDS = 604800
 
 app_config = {
     'development': DevelopmentConfig,

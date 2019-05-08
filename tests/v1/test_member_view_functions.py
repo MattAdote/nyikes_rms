@@ -7,9 +7,10 @@ from flask import render_template
 from .contexts import   create_api_server, db, \
                         BaseModel, \
                         SuperUser, \
-                        MembershipClass, member_classes_schema, \
-                        save_new_member, get_membership_class_records, generate_members_file, \
-                        process_uploaded_members_file, send_email                        
+                        Member, MembershipClass, member_classes_schema, \
+                        save_new_member, get_membership_class_records, get_member_record, \
+                        generate_members_file, process_uploaded_members_file, send_email, \
+                        update_member_record                        
 
 scriptpath = os.path.realpath(__file__)
 dirpath, filen = os.path.split(scriptpath)
@@ -28,6 +29,8 @@ class TestMemberViewFunctions(unittest.TestCase):
         self.generate_members_file = generate_members_file
         self.process_uploaded_members_file = process_uploaded_members_file
         self.send_email = send_email
+        self.get_member_record = get_member_record
+        self.update_member_record = update_member_record
 
         self.input_member_record = {
             "first_name": "LaKwanza",
@@ -129,7 +132,235 @@ class TestMemberViewFunctions(unittest.TestCase):
         self.assertEqual(output['data']['email'], expected_output['data']['email'], 'email returned Not email supplied')
         self.assertEqual(output['data']['phone_number'], expected_output['data']['phone_number'], 'monthly_contrib_amount returned Not monthly_contrib_amount supplied')
         self.assertEqual(output['data']['class_name'], expected_output['data']['class_name'], 'class_name returned Not class_name supplied')
+    
+    def test_function_update_member_record_returns_error_on_invalid_property_to_update_param_type(self):
+        """ 
+            Tests that the function to update a member record returns an error if the
+            type of the property_to_update parameter is invalid
+        """
+        properties_to_update = 'I am an invalid parameter'
+        expected_output = {
+            "status": 400,
+            "error" : "Invalid format supplied: {}".format(type(properties_to_update))
+        }
+        with self.app.test_request_context():
+            output = self.update_member_record(properties_to_update, 'random public id')
 
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+
+    def test_function_update_member_record_returns_error_on_invalid_record_public_id_param_type(self):
+        """ 
+            Tests that the function to update a member record returns an error if the
+            type of the record_public_id parameter is invalid
+        """
+        properties_to_update = {"valid": 'I am an quasi valid parameter'}
+        record_public_id = ['random-public-id-3-4']
+        expected_output = {
+            "status": 400,
+            "error": "Invalid public id format supplied: {}".format(type(record_public_id))
+        }
+        with self.app.test_request_context():
+            output = self.update_member_record(properties_to_update, record_public_id)
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+
+    def test_function_update_member_record_returns_error_on_empty_record_public_id(self):
+        """ 
+            Tests that the function to update a member record returns an error if the
+            record_public_id parameter is empty or has no value
+        """
+        properties_to_update = {"valid": 'I am an quasi valid parameter'}
+        record_public_id = ""
+        expected_output = {
+            "status": 400,
+            "error": "Public id is not valid UUID"
+        }
+        with self.app.test_request_context():
+            output = self.update_member_record(properties_to_update, record_public_id)
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+
+    def test_function_update_member_record_returns_error_if_record_public_id_not_UUID_string_format(self):
+        """ 
+            Tests that the function to update a member record returns an error if the
+            record_public_id parameter does not have exactly four '-' characters
+        """
+        properties_to_update = {"valid": 'I am an quasi valid parameter'}
+        record_public_id = "i-have-more-than-four-hyphen-characters"
+        expected_output = {
+            "status": 400,
+            "error": "Public id is not valid UUID"
+        }
+        with self.app.test_request_context():
+            output = self.update_member_record(properties_to_update, record_public_id)
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+
+    def test_function_update_member_record_returns_updated_record_with_username(self):
+        """ 
+            Tests that the function to update a member record returns the
+            updated record
+        """
+        properties_to_update = {
+            "username": "Yule Msee",
+            "password": "ati-what?"
+        }
+        expected_output = {
+            "status": 200,
+            "data" : {
+                "id":1,
+                # plus input member record attributes
+                # and plus properties to update w/o password
+            }
+        }
+        expected_output['data'].update(self.input_member_record)
+        expected_output['data'].update({"username" : properties_to_update["username"]})
+        with self.app.test_request_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class.save()
+            # 2. create new member record
+            member_record = self.save_new_member(self.input_member_record)
+            # 3. test the function
+            output = self.update_member_record(properties_to_update, member_record['data']['public_id'])
+        
+        # make the assertions
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('data', output, 'data key is missing in output')
+        self.assertIn('public_id', output['data'], 'public_id key missing in output.data')
+        self.assertIn('username', output['data'], 'username key missing in output.data')
+
+        self.assertEqual(output['status'], expected_output['status'], 'status returned Not status expected ')
+        self.assertEqual(output['data']['first_name'], expected_output['data']['first_name'], 'first_name returned Not first_name supplied ')
+        self.assertEqual(output['data']['middle_name'], expected_output['data']['middle_name'], 'middle_name supplied Not middle_name returned')
+        self.assertEqual(output['data']['last_name'], expected_output['data']['last_name'], 'last_name returned Not last_name supplied')
+        self.assertEqual(output['data']['email'], expected_output['data']['email'], 'email returned Not email supplied')
+        self.assertEqual(output['data']['phone_number'], expected_output['data']['phone_number'], 'monthly_contrib_amount returned Not monthly_contrib_amount supplied')
+        self.assertEqual(output['data']['class_name'], expected_output['data']['class_name'], 'class_name returned Not class_name supplied')
+        self.assertEqual(output['data']['username'], expected_output['data']['username'], 'username returned Not username supplied')
+
+    def test_function_get_member_record_returns_error_on_db_error_member_table_not_exist(self):
+        """
+            Test that get_member_record() returns error if the database raises an error
+            when looking up the Member and the member table doesn't exist or there's an
+            error when retrieving the member record
+        """
+        member_email="random@email.dom"
+        
+        expected_output = {
+            "status" : 500,
+            "error": "Ran into a database error looking up member record for email: {}".format(member_email)
+        }
+
+        with self.app.app_context():
+            Member.__table__.drop(db.get_engine())
+            output = self.get_member_record(member_email)
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+    
+    def test_function_get_member_record_returns_error_if_no_record_found(self):
+        """ 
+            Tests that the function to get a member record returns
+            an error if none is found
+        """
+        member_email = "notexist@domain.com"
+
+        expected_output = {
+            "status": 404,
+            "error" : "No member record found for email: {}".format(member_email)
+        }
+
+        with self.app.app_context():
+            # test the function
+            output = self.get_member_record(member_email)
+
+        # make the assertions
+        assert type(output) == dict
+
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('error', output, 'error key is missing in output')
+
+        self.assertEqual(output['status'], expected_output['status'], 'Output not equal to expected output')
+        self.assertEqual(output['error'], expected_output['error'], 'Output not equal to expected output')
+    
+    def test_function_get_member_record_returns_member_record_of_specified_email(self):
+        """ 
+            Tests that the function to get a member record returns
+            the member record of specified email address
+        """
+
+        expected_output = {}
+        expected_output.update(self.input_member_record)
+
+        with self.app.test_request_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class.save()
+            # 2. create a new member record
+            new_record = self.save_new_member(self.input_member_record)
+            # test the function
+            output = self.get_member_record(new_record['data']['email'])
+
+        # make the assertions
+        assert type(output) == dict
+        self.assertIn('public_id', output, 'public_id key missing in output')
+        self.assertEqual(output['email'], expected_output['email'], 'Output not equal to expected output')
+    
     def test_function_get_membership_class_records_returns_error_if_no_records_found(self):
         """ 
             Tests that the function to get membership class records returns

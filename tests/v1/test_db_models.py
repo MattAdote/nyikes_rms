@@ -1,5 +1,5 @@
 import unittest
-import os
+import os, uuid
 import json, pdb
 
 from .contexts import   create_api_server, db, \
@@ -77,7 +77,7 @@ class TestDBModels(unittest.TestCase):
         
         superuser = SuperUser('test_username')
         self.assertTrue(isinstance(superuser, SuperUser), 'Object not instance of its class')
-    
+        
     def test_object_superuser_can_save_to_db(self):
         superuser_data = {
             'username': 'test_username',
@@ -105,6 +105,14 @@ class TestDBModels(unittest.TestCase):
 
         self.assertTrue(issubclass(Member, UserModel), 'Member is not child of UserModel')
     
+    def test_model_class_member_has_rms_system_user_propertes(self):
+        """ Test that the Member has rms-specific system user properties """
+        
+        properties = ['public_id', 'username','accountActivated', 'DateAccountActivated']
+
+        for prop in properties:
+            self.assertTrue(hasattr(Member, prop), '\nClass, Member, is missing property: {}'.format(prop))
+
     def test_model_class_member_has_native_propertes(self):
         """ Test that the Member has native properties """
         
@@ -126,6 +134,25 @@ class TestDBModels(unittest.TestCase):
         
         obj_member = Member(**member_properties)
         self.assertTrue(isinstance(obj_member, Member), 'Object  not instance of its class')
+    
+    def test_object_member_has_public_id_automatically_set_and_is_UUID(self):
+        """ 
+            Test that an instantiated Member object has property
+            public_id automatically set
+        """
+
+        member_properties = {
+            "first_name" : "LaKwanza",
+            "middle_name": "MajinaZaKati",
+            "last_name": "JinaLaMwisho",
+            "email": "test@nyikes.org",
+            "phone_number" : "0700123456"
+        }
+        
+        obj_member = Member(**member_properties)
+        self.assertTrue(isinstance(obj_member, Member), 'Object  not instance of its class')
+        self.assertIsNotNone(obj_member.public_id)
+        assert type(obj_member.public_id) == uuid.UUID
 
     def test_object_member_can_save_to_db(self):
         """ Test that the object, Member, can save to db """
@@ -152,7 +179,6 @@ class TestDBModels(unittest.TestCase):
             
             # Evaluate the parsed member object
             res = member_schema.jsonify(member)
-
             self.assertIn('id', res.json)
             self.assertTrue(
                 all(item in res.json.items() for item in member_properties.items() ),

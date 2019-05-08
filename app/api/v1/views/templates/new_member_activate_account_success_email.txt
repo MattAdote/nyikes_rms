@@ -1,0 +1,23 @@
+Dear {{
+    member.last_name + " " + member.first_name +  (" " + member.middle_name if member.middle_name else "")
+}},
+
+Your account has been successfully activated.
+
+Your can now log in to the Nyikes RMS application using the following credentials:
+
+email: {{ member.email }} OR username: {{ member.username }}
+password: The password you set on the activation form
+
+In case you forget your password, you can easily reset it through the Nyikes RMS application.
+
+In the unlikely event that you have difficulty doing so or just want to say hello, kindly
+get in touch with the Nyikes IT department through whatsapp, call or sms.
+
+PS: donations of mandazi, soda kubwa, roasted fried or otherwise grilled gweno, rech, diel, thiang'
+and even rombo are most welcome and unofficially encouraged. :-)
+
+
+Warm regards,
+
+Nyikes RMS
