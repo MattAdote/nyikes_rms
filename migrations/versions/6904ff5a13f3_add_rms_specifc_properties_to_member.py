@@ -36,7 +36,7 @@ def upgrade():
     op.alter_column('member', 'public_id',
                existing_type=sa.VARCHAR(length=150),
                nullable=False)
-    op.create_unique_constraint(op.f('uq_member_email'), 'member', ['email'])
+    # op.create_unique_constraint(op.f('uq_member_email'), 'member', ['email'])
     op.create_unique_constraint(op.f('uq_member_public_id'), 'member', ['public_id'])
     op.create_unique_constraint(op.f('uq_member_username'), 'member', ['username'])
     op.drop_constraint('member_email_key', 'member', type_='unique')
@@ -52,7 +52,7 @@ def downgrade():
     op.create_unique_constraint('member_email_key', 'member', ['email'])
     op.drop_constraint(op.f('uq_member_username'), 'member', type_='unique')
     op.drop_constraint(op.f('uq_member_public_id'), 'member', type_='unique')
-    op.drop_constraint(op.f('uq_member_email'), 'member', type_='unique')
+    # op.drop_constraint(op.f('uq_member_email'), 'member', type_='unique')
     op.alter_column('member', 'public_id',
                existing_type=sa.VARCHAR(length=150),
                nullable=True)
