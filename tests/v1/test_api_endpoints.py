@@ -1,8 +1,11 @@
 import unittest, pytest
-import os
+import os, time
 import json, pdb
 
-from .contexts import create_api_server, db
+from itsdangerous import URLSafeTimedSerializer
+# from flask import url_for
+
+from .contexts import create_api_server, db, SALT_ACTIVATE_ACCOUNT
 
 scriptpath = os.path.realpath(__file__)
 dirpath, filen = os.path.split(scriptpath)
@@ -937,6 +940,152 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertIn('attachment', res_2.headers['content-disposition'])
 
         assert type(res_2.data) == bytes
+
+    def test_endpoint_get_members_activate_account_exists(self):
+        """
+            Test that the endpoint is reachable and exists
+        """
+        expected_output = [200, 400]
+
+        res = self.client.get('api/v1/members/activate_account/""')
+
+        self.assertIn(res.status_code, expected_output)
+        
+
+    def test_endpoint_get_members_activate_account_returns_error_if_no_token(self):
+        """
+            Test that the endpoint displays an error page with status 400 if
+            the token is missing from the url
+        """
+        expected_output = {
+            "status_code" : 400,
+            "mimetype": "text/html"
+        }
+
+        res = self.client.get('api/v1/members/activate_account/""')
+
+        self.assertEqual(res.status_code, expected_output['status_code'], 
+            "Expected error status_code, {}, not returned".format(expected_output['status_code']))
+        self.assertEqual(res.mimetype, expected_output['mimetype'], 
+            "Expected mimetype, {}, not returned".format(expected_output['mimetype']))
+
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_get_members_activate_account_returns_html_form_if_valid_token(self):
+        """
+            Test that the endpoint displays the html page containing the form
+            to key in desired username and password
+        """
+        
+        expected_output = {
+            "status_code" : 200,
+            "mimetype": "text/html"
+        }
+
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+
+        # create membership class
+        input_1 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }
+        # make a call to POST /settings/config/members
+        res_1 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_1),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to POST /members
+        input_2 = {
+            "class_name" : res_1.json['data']['class_name'],
+            "first_name" : "Test First Name",
+            "middle_name" : "Jaribu la kati", 
+            "last_name" : "Test last name", 
+            "email" : "testmember@testdomain.com", 
+            "phone_number" : "0700123456"
+        }
+        res_2 = self.client.post(
+            'api/v1/members',
+            data = json.dumps(input_2),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # get ready to verify the token
+        activate_account_serializer = URLSafeTimedSerializer(self.app.config['SECRET'])
+        valid_token = activate_account_serializer.dumps(res_2.json['data']['email'], salt=SALT_ACTIVATE_ACCOUNT)
+
+        res = self.client.get('api/v1/members/activate_account/{}'.format(valid_token))
+
+        self.assertEqual(res.status_code, expected_output['status_code'], 
+            "Expected error status_code, {}, not returned".format(expected_output['status_code']))
+        self.assertEqual(res.mimetype, expected_output['mimetype'], 
+            "Expected mimetype, {}, not returned".format(expected_output['mimetype']))
+        self.assertIn("</form>", res.data.decode(), "Form tag missing in html")
+    
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_get_members_activate_account_returns_error_if_expired_token(self):
+        """
+            Test that the endpoint displays an error message if the token is expired.
+        """
+        
+        expected_output = {
+            "status_code" : 200,
+            "mimetype": "text/html"
+        }
+
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+
+        # create membership class
+        input_1 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }
+        # make a call to POST /settings/config/members
+        res_1 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_1),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to POST /members
+        input_2 = {
+            "class_name" : res_1.json['data']['class_name'],
+            "first_name" : "Test First Name",
+            "middle_name" : "Jaribu la kati", 
+            "last_name" : "Test last name", 
+            "email" : "testmember@testdomain.com", 
+            "phone_number" : "0700123456"
+        }
+        res_2 = self.client.post(
+            'api/v1/members',
+            data = json.dumps(input_2),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # get ready to verify the token
+        activate_account_serializer = URLSafeTimedSerializer(self.app.config['SECRET'])
+        valid_token = activate_account_serializer.dumps(res_2.json['data']['email'], salt=SALT_ACTIVATE_ACCOUNT)
+
+        time.sleep(10)
+        res = self.client.get('api/v1/members/activate_account/{}'.format(valid_token))
+
+        self.assertEqual(res.status_code, expected_output['status_code'], 
+            "Expected error status_code, {}, not returned".format(expected_output['status_code']))
+        self.assertEqual(res.mimetype, expected_output['mimetype'], 
+            "Expected mimetype, {}, not returned".format(expected_output['mimetype']))
+        self.assertIn("The token has expired.", res.data.decode(), "Form tag missing in html")
 
     def tearDown(self):
         """teardown all initialized variables."""

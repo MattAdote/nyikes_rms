@@ -1,0 +1,47 @@
+<html>
+    <head>
+        <title>Account Activation - Nyikes</title>
+    </head>
+    <body>
+        <div>
+            <p>
+                Dear {{
+                    member.last_name + " " + member.first_name +  (" " + member.middle_name if member.middle_name else "")
+                }},
+            </p>
+            <p>
+                Your details have been added to Nyikes RMS as given below:
+            
+                <ul>
+                    <li>
+                        <b>First name:</b> {{ member.first_name }}
+                    </li>
+                    <li>
+                        <b>Middle name:</b> {{ member.middle_name }}
+                    </li>
+                    <li>
+                        <b>Last Name:</b> {{ member.last_name }}
+                    </li>
+                    <li>
+                        <b>Phone number:</b> {{ member.phone_number }}
+                    </li>
+                    <li>
+                        <b>Membership class:</b> {{ member.class_name }}
+                    </li>
+                </ul>
+                <br/><br/>
+                In order for you to access Nyikes RMS, you need to activate your account within the next 7 days.<br/>
+                Please click on this link {{ link }} to activate your account.
+            </p>
+            <p>
+                In the event that you are unable to activate your account before the link expires, you can still
+                activate your account manually by using the Nyikes RMS application.
+            </p>
+            <p>
+                Best regards,
+                <br/><br/>
+                Nyikes
+            </p>
+        </div>
+    </body>
+</html>

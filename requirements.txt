@@ -7,6 +7,7 @@ autobahn==19.1.1
 autoenv==1.0.0
 Automat==0.7.0
 backcall==0.1.0
+blinker==1.4
 buildbot==1.8.0
 buildbot-worker==1.8.0
 certifi==2018.11.29
@@ -19,10 +20,12 @@ cryptography==2.5
 decorator==4.3.2
 et-xmlfile==1.0.1
 Flask==1.0.2
+Flask-Mail==0.9.1
 flask-marshmallow==0.9.0
 Flask-Migrate==2.3.1
 Flask-Script==2.0.6
 Flask-SQLAlchemy==2.3.2
+Flask-WTF==0.14.2
 future==0.17.1
 gunicorn==19.9.0
 hyperlink==18.0.0
@@ -92,6 +95,7 @@ urllib3==1.24.1
 wcwidth==0.1.7
 Werkzeug==0.14.1
 wrapt==1.11.1
+WTForms==2.2.1
 xlrd==1.2.0
 XlsxWriter==1.1.7
 zope.interface==4.6.0

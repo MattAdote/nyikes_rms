@@ -7,20 +7,25 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # project specific imports
 from flask import   Blueprint, request, jsonify, make_response, send_file, \
-                    current_app as app
+                    render_template, current_app as app
+from itsdangerous import SignatureExpired
 
 # local imports
-from app.api.v1.utils import    parse_request, validate_request_data, \
+from app.api.v1.utils import    DATETIME_FORMATER, \
+                                parse_request, validate_request_data, \
                                 check_is_empty, endpoint_error_response, \
                                 token_required, generate_authorization_error_response, \
                                 endpoint_validate_user_token
 
-from app.api.v1.models import   MembershipClass, \
-                                Member, member_schema, members_schema
+from app.api.v1.models import   MembershipClass, Member, \
+                                member_schema, members_schema, \
+                                AcitvateAccountForm
 
 from . membersview_functions import save_member_record as save, members_validate_request_data, \
                                     generate_members_file, get_uploaded_members_file, \
-                                    process_uploaded_members_file
+                                    process_uploaded_members_file, get_member_record, \
+                                    get_activate_account_serializer, SALT_ACTIVATE_ACCOUNT, \
+                                    update_member_record, send_email
 
 # Define blueprint for members view
 members_view_blueprint = Blueprint('members_view', '__name__')
@@ -112,7 +117,7 @@ def post_members_file(access_token):
     response.update(process_uploaded_members_file(uploaded_file, 'Member Info'))
 
     if "error" in response:
-        make_response(jsonify(response), response['status'])
+        return make_response(jsonify(response), response['status'])
     else:
         return send_file(
             response["output_file"], 
@@ -120,3 +125,61 @@ def post_members_file(access_token):
             as_attachment=True, 
             attachment_filename=response["filename"],
         )
+
+@members_view_blueprint.route('/members/activate_account/<token>', methods=['GET', 'POST'])
+def activate_account(token):
+    with app.app_context():
+        T_EXPIRE = app.config['ACTIVATION_TOKEN_EXPIRY_SECONDS']
+
+    INVALID_TOKEN_VALUES = ['', "", '""', "''"]
+    if token is None or token in INVALID_TOKEN_VALUES:
+        return render_template('activate_account_error_no_token.html'), 400
+    try:
+        member_email = get_activate_account_serializer().loads(token, salt=SALT_ACTIVATE_ACCOUNT, max_age=T_EXPIRE)
+    except SignatureExpired:
+        return "<h1>The token has expired. Please use the Nyikes RMS Application to activate your account</h1>"
+    except:
+        return "<h1>There is a problem with the token. Please use the Nyikes RMS Application to activate your account</h1>"
+    # get the member record of specified email
+    # if success, display the activation form
+    # else, return an error
+    member_record = get_member_record(member_email)
+    if 'error' not in member_record:
+        account_activation_form = AcitvateAccountForm()
+        
+        if account_activation_form.validate_on_submit():
+            # form is submitted
+            # update the member's record with the username and password
+            # dispatch an email notifying the user of successful update
+            member_properties = request.form.to_dict()
+            member_properties.pop('confirm_password')
+            # add the activation timestamp and set the boolean
+            member_properties.update({"DateAccountActivated": DATETIME_FORMATER.format(datetime.datetime.now())})
+            member_properties.update({"accountActivated": True})
+
+            updated_record = update_member_record(member_properties, member_record['public_id'])
+            
+            if 'error' in updated_record:
+                return '<h1>Error:</h1><p>{}</p>'.format(updated_record['error'])
+            # Dispatch email notification of successfull activation
+            email_text_body = render_template(
+                'new_member_activate_account_success_email.txt', 
+                member=updated_record['data']
+            )
+            email_html_body = render_template(
+                'activate_account_success.html',
+                member=updated_record['data']
+            )
+            send_email(
+                "NYIKES RMS: ACCOUNT ACTIVATION SUCCESS", app.config['ADMIN_EMAILS'][0],
+                updated_record['data']['email'],
+                email_text_body,
+                html_body=email_html_body
+            )
+            
+            return render_template('activate_account_success.html', member=updated_record['data']), 200
+        
+        fa = request.path
+        return render_template('activate_account.html', form=account_activation_form, form_action=fa)
+    else:
+        return '<p>Hi, there was an error processing the activation: {}<p>'.format(member_record['error'])

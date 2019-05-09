@@ -1,0 +1,21 @@
+Dear {{
+    member.last_name + " " + member.first_name +  (" " + member.middle_name if member.middle_name else "")
+}},
+
+Your details have been added to Nyikes RMS as given below:
+
+First name: {{ member.first_name }}
+Middle name: {{ member.middle_name }}
+Last Name: {{ member.last_name }}
+Phone number: {{ member.phone_number }}
+Membership class: {{ member.class_name }}
+
+In order for you to access Nyikes RMS, you need to activate your account within the next 7 days.
+Please click on this link {{ link }} to activate your account.
+
+In the event that you are unable to activate your account before the link expires, you can still
+activate your account manually by using the Nyikes RMS application.
+
+Best regards,
+
+Nyikes

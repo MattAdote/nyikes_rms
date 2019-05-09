@@ -1,5 +1,10 @@
+import uuid
+
 # project imports
 from marshmallow import fields
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField
+from wtforms.validators import InputRequired, EqualTo
 
 # local imports
 from app import ma
@@ -10,6 +15,8 @@ class Member(BaseModel, UserModel):
         Model for a member
     """
     username = db.Column(db.String(75), unique=True, nullable=True)
+    accountActivated = db.Column(db.Boolean, default=False, nullable=False)
+    DateAccountActivated = db.Column(db.DateTime, default="2000-Jan-01 01:01:01", nullable=False)
 
     class_id = db.Column(db.Integer, db.ForeignKey('membership_class.id'))
 
@@ -25,8 +32,15 @@ class Member(BaseModel, UserModel):
         for prop in member_properties:
             if prop not in Member.initial_attributes:
                 raise Exception('Received unexpected property: {}'.format(prop))
+            # set the membership_class to NoneType if empty string
+            # otherwise error will be raised: 
+            # AttributeError: 'str' object has no attribute '_sa_instance_state'
+            if prop == 'membership_class' and member_properties[prop] == "":
+                member_properties[prop] = None
         super().__init__(**member_properties)
         
+        self.public_id = uuid.uuid4()
+
         self.class_name = '' # This is a bug workaround.
 
         # The bug in question is to do with the Marshmallow serializer.
@@ -59,7 +73,8 @@ class MemberSchema(ma.ModelSchema):
     class_name = fields.Method("set_the_class_name")
     class Meta:
         model = Member
-        fields = ['id', 'first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'class_name']
+        fields = ['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'class_name', 
+            'public_id', 'id', 'username']
 
     def set_the_class_name(self, obj_member):
         return  obj_member.membership_class.class_name \
@@ -69,3 +84,14 @@ class MemberSchema(ma.ModelSchema):
 # Init schema
 member_schema = MemberSchema(strict=True)
 members_schema = MemberSchema(many=True, strict=True)
+
+class AcitvateAccountForm(FlaskForm):
+    username = StringField('username', validators=[InputRequired()])
+    password = PasswordField('password', validators=[InputRequired()])
+    confirm_password = PasswordField(
+        'confirm_password', 
+        validators=[
+            InputRequired(), 
+            EqualTo('password', "Passwords do not match")
+        ]
+    )
