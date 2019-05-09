@@ -74,7 +74,7 @@ class MemberSchema(ma.ModelSchema):
     class Meta:
         model = Member
         fields = ['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'class_name', 
-            'public_id', 'id', 'username']
+            'public_id', 'id', 'username', 'accountActivated']
 
     def set_the_class_name(self, obj_member):
         return  obj_member.membership_class.class_name \

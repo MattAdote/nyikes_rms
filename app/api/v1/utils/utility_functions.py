@@ -1,6 +1,15 @@
+import re
+
+from .utility_constants import EMAIL_PATTERN
+
 allowed_content_types = ['application/x-www-form-urlencoded', 'application/json', 'multipart/form-data']
 
 def validate_request_data(request_data, required_fields_checklist):
+    """
+        This checks that required data is present and not empty.
+        Also, non-required data is checked to see if present
+        and not empty.
+    """
     # request_data = [  {
     #                       "required_field_1": "datatype", 
     #                       "required_field_1": "datatype"
@@ -144,6 +153,10 @@ def parse_request(req):
         return data
 
 def endpoint_error_response(request_data, processed_data):
+    """ 
+        Returns error response depending on whether or not
+        invalid parameters were found in the request data
+    """
     if 'error' in processed_data:
         # some required fields are not present or are empty
         return processed_data
@@ -153,3 +166,12 @@ def endpoint_error_response(request_data, processed_data):
         response = invalid_param(request_data, processed_data)
 
         return response
+
+def is_valid_email(email):
+    """
+        returns True or False if the supplied email
+        is a valid email or not.
+    """
+    if re.match(EMAIL_PATTERN, email) != None:
+        return True
+    return False

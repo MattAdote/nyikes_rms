@@ -21,11 +21,12 @@ from app.api.v1.models import   MembershipClass, Member, \
                                 member_schema, members_schema, \
                                 AcitvateAccountForm
 
-from . membersview_functions import save_member_record as save, members_validate_request_data, \
+from . membersview_functions import activate_account_validate_request_data, \
+                                    save_member_record as save, members_validate_request_data, \
                                     generate_members_file, get_uploaded_members_file, \
                                     process_uploaded_members_file, get_member_record, \
                                     get_activate_account_serializer, SALT_ACTIVATE_ACCOUNT, \
-                                    update_member_record, send_email
+                                    update_member_record, send_email, send_account_activation_email
 
 # Define blueprint for members view
 members_view_blueprint = Blueprint('members_view', '__name__')
@@ -183,3 +184,51 @@ def activate_account(token):
         return render_template('activate_account.html', form=account_activation_form, form_action=fa)
     else:
         return '<p>Hi, there was an error processing the activation: {}<p>'.format(member_record['error'])
+
+@members_view_blueprint.route('/members/activate_account', methods=['POST'])
+def process_activate_account_request():
+    """ This processes a request to manually activate an account """
+    
+    response ={
+        "status":200,
+        "data":"Manual account activation done here"
+    }
+    
+    # Parse the request data to check content_type is correct
+    data = parse_request(request)
+    if type(data) == dict and 'error' in data:
+        return make_response(jsonify(data), data['status'])
+
+    # check validity of request data
+    res_valid_data = activate_account_validate_request_data(data)
+
+    # process data if valid, else, return validation findings
+    if data == res_valid_data:
+        # 1. get the member record
+        member_record = get_member_record(res_valid_data['email'])
+        if 'error' in member_record:
+            return make_response(jsonify(member_record), member_record['status'])
+        # 2. take action based on activation status
+        if member_record['accountActivated'] is False:
+            send_account_activation_email(member_record)
+            response = {
+                "status":200,
+                "data":"Please check your mailbox for the account activation link"
+            }
+        else:
+            email_text_body = render_template('advice_reset_password_email.txt', member=member_record)
+            email_html_body = render_template('advice_reset_password_email.html',member=member_record)
+            send_email(
+                "NYIKES RMS: ACCOUNT ACTIVATION NOTICE", app.config['ADMIN_EMAILS'][0], member_record['email'],
+                email_text_body,
+                html_body=email_html_body
+            )
+            response = {
+                "status":200,
+                "data":"Please check your mailbox. Instructions have been sent to your email address at {}".format(member_record['email'])
+            }
+    else:
+        # return error from validation findings
+        response = endpoint_error_response(data, res_valid_data)
+
+    return make_response(jsonify(response), response['status'])
