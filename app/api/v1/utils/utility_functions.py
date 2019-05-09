@@ -1,6 +1,11 @@
 allowed_content_types = ['application/x-www-form-urlencoded', 'application/json', 'multipart/form-data']
 
 def validate_request_data(request_data, required_fields_checklist):
+    """
+        This checks that required data is present and not empty.
+        Also, non-required data is checked to see if present
+        and not empty.
+    """
     # request_data = [  {
     #                       "required_field_1": "datatype", 
     #                       "required_field_1": "datatype"
@@ -144,6 +149,10 @@ def parse_request(req):
         return data
 
 def endpoint_error_response(request_data, processed_data):
+    """ 
+        Returns error response depending on whether or not
+        invalid parameters were found in the request data
+    """
     if 'error' in processed_data:
         # some required fields are not present or are empty
         return processed_data

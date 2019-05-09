@@ -5,7 +5,7 @@ import json, pdb
 from itsdangerous import URLSafeTimedSerializer
 # from flask import url_for
 
-from .contexts import create_api_server, db, SALT_ACTIVATE_ACCOUNT
+from .contexts import create_api_server, db, SALT_ACTIVATE_ACCOUNT, Member
 
 scriptpath = os.path.realpath(__file__)
 dirpath, filen = os.path.split(scriptpath)
@@ -1086,6 +1086,185 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertEqual(res.mimetype, expected_output['mimetype'], 
             "Expected mimetype, {}, not returned".format(expected_output['mimetype']))
         self.assertIn("The token has expired.", res.data.decode(), "Form tag missing in html")
+
+    def test_endpoint_post_activate_account_returns_json(self):
+        """Test API endpoint is reachable and returns json"""
+        
+        res = self.client.post('api/v1/members/activate_account')       
+        
+        self.assertTrue(res.is_json, "Json not returned.")
+    
+    def test_endpoint_post_activate_account_returns_error_on_incorrect_content_type(self):
+        """Test API endpoint returns error if incorrect or no content type given """
+        res = self.client.post('api/v1/members/activate_account')
+        
+        self.assertIn('error', res.json, 'Error not Returned')
+
+        self.assertEqual(400, res.status_code)
+
+    def test_endpoint_post_activate_account_returns_error_if_required_field_empty(self):
+        """Test API endpoint returns error if request fields are empty """
+
+        expected_output = {
+            "status":400,
+            "error":"Required field(s) empty: email"
+        }
+
+        res = self.client.post(
+            'api/v1/members/activate_account',
+            data = json.dumps({"email": "" }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('error', res.json)
+        self.assertEqual(expected_output['status'], res.status_code)
+        self.assertEqual(expected_output['error'], res.json['error'])
+    
+    def test_endpoint_post_activate_account_returns_error_if_member_record_not_found(self):
+        """Test API endpoint returns error if request fields are empty """
+
+        member_email = "notexist@domain.com"
+
+        expected_output = {
+            "status": 404,
+            "error" : "No member record found for email: {}".format(member_email)
+        }
+
+        res = self.client.post(
+            'api/v1/members/activate_account',
+            data = json.dumps({"email": "{}".format(member_email) }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('error', res.json)
+        self.assertEqual(expected_output['status'], res.status_code)
+        self.assertEqual(expected_output['error'], res.json['error'])
+
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_post_activate_account_returns_message_if_activation_email_sent(self):
+        """
+            Test that the endpoint returns a message indicating that the
+            activation email has been sent
+        """
+
+        expected_output = {
+            "status":200,
+            "data":"Please check your mailbox for the account activation link"
+        }
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+
+        # create membership class
+        input_1 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }
+        # make a call to POST /settings/config/members
+        res_1 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_1),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to POST /members
+        input_2 = {
+            "class_name" : res_1.json['data']['class_name'],
+            "first_name" : "Test First Name",
+            "middle_name" : "Jaribu la kati", 
+            "last_name" : "Test last name", 
+            "email" : "ianadote@gmail.com", 
+            "phone_number" : "0700123456"
+        }
+        res_2 = self.client.post(
+            'api/v1/members',
+            data = json.dumps(input_2),
+            headers = headers,
+            content_type = 'application/json'
+        )
+        
+        # now make a call to the endpoint and supply
+        # the email of an existing user
+        res = self.client.post(
+            'api/v1/members/activate_account',
+            data = json.dumps({"email": "{}".format(res_2.json['data']['email']) }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('status', res.json)
+        self.assertIn('data', res.json)
+
+        self.assertEqual(expected_output['status'], res.status_code)
+        self.assertEqual(expected_output['data'], res.json['data'])
+    
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_post_activate_account_returns_message_if_advice_reset_password_email_sent(self):
+        """
+            Test that the endpoint returns a message indicating that the
+            email advicing the member to reset their password has been
+            sent 
+        """
+
+        expected_output = {
+            "status":200,
+            "data":"Please check your mailbox. Instructions have been sent to your email address at {}"
+        }
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+
+        # create membership class
+        input_1 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }
+        # make a call to POST /settings/config/members
+        res_1 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_1),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to POST /members
+        input_2 = {
+            "class_name" : res_1.json['data']['class_name'],
+            "first_name" : "Test First Name",
+            "middle_name" : "Jaribu la kati", 
+            "last_name" : "Test last name", 
+            "email" : "ianadote@gmail.com", 
+            "phone_number" : "0700123456"
+        }
+        res_2 = self.client.post(
+            'api/v1/members',
+            data = json.dumps(input_2),
+            headers = headers,
+            content_type = 'application/json'
+        )
+        with self.app.test_request_context():
+            # manually set the accountActivated property to True
+            member = Member.query.filter_by(email=res_2.json['data']['email']).first()
+            member.accountActivated = True
+            member.save()
+            
+        # now make a call to the endpoint and supply
+        # the email of an existing user
+        res = self.client.post(
+            'api/v1/members/activate_account',
+            data = json.dumps({"email": "{}".format(res_2.json['data']['email']) }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('status', res.json)
+        self.assertIn('data', res.json)
+
+        self.assertEqual(expected_output['status'], res.status_code)
+        self.assertEqual(expected_output['data'].format(res_2.json['data']['email']), res.json['data'])
 
     def tearDown(self):
         """teardown all initialized variables."""

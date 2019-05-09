@@ -546,3 +546,74 @@ def update_member_record(properties_to_update, record_public_id):
         "status": 200,
         "data": member_schema.dump(member).data
     }
+
+def activate_account_validate_request_data(req_data):
+    """Validates the data received for manual account activation"""
+    # data = {
+    #             "email": "me@domain.com", required
+    #         }   
+    #
+    # parse the recevied data to check for empty or none
+    received_data = check_is_empty(req_data)
+
+    # exit if indeed data is empty
+    if 'error' in received_data:
+        return received_data    
+    
+    # Specify the required fields
+    req_fields = ['email']
+    # Initialize list to hold processed fields
+    sanitized_data = []
+
+    dict_req_fields = {}
+    # get the required fields' data and put in own dictionary
+    for field in req_fields:
+        if field in received_data:
+            dict_req_fields.update({field: received_data[field]})
+    # append required fields dictionary to sanitized_data list
+    sanitized_data.append(dict_req_fields)
+
+    # send sanitized_data list to actual validation function
+    checked_data = validate_request_data(sanitized_data, req_fields)
+
+    # return validation findings if there was an error
+    if 'error' in checked_data:
+        return checked_data
+    
+    # check that the email is in email format.
+    # EMAIL_REGEX = ''
+    # commented out for now. will attend to this later
+
+    return checked_data
+
+def generate_activation_link(member_email):
+    """ 
+        Generate an activation link for specified email
+    """
+    return url_for(
+        'members_view.activate_account',
+        token=get_activate_account_serializer().dumps(
+                member_email, 
+                salt=SALT_ACTIVATE_ACCOUNT
+            ),
+        _external=True
+    )
+
+def send_account_activation_email(member_record):
+    """
+        Send account activation email for member
+    """
+    activation_link = generate_activation_link(member_record['email'])
+    email_text_body = render_template('new_member_activate_account_email.txt', 
+        member=member_record,
+        link=activation_link
+    )
+    email_html_body = render_template('new_member_activate_account_email.html', 
+        member=member_record,
+        link=activation_link
+    )
+    send_email(
+        "NYIKES RMS: ACCOUNT ACTIVATION", app.config['ADMIN_EMAILS'][0], member_record['email'],
+        email_text_body,
+        html_body=email_html_body
+    )
