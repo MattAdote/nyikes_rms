@@ -1,10 +1,11 @@
 # import pdb
 
-import unittest
+import unittest, pdb
 import os
 import json
 
-from .contexts import validate_request_data, validate_route_param, invalid_param, check_is_empty
+from .contexts import validate_request_data, validate_route_param, invalid_param, check_is_empty, \
+                        is_valid_email
 
 class TestUtilitiesFunctions(unittest.TestCase):
     """This class represents the utilities test case"""
@@ -15,6 +16,7 @@ class TestUtilitiesFunctions(unittest.TestCase):
         self.validate_route_param = validate_route_param
         self.invalid_param = invalid_param
         self.check_is_empty = check_is_empty
+        self.is_valid_email = is_valid_email
 
     def test_validate_required_fields_present(self):
         """Test that required fields are present"""
@@ -129,6 +131,25 @@ class TestUtilitiesFunctions(unittest.TestCase):
         self.assertEqual(expected_status_code, output['status'])
         self.assertIn(expected_error_msg, output['error'])
 
+    def test_function_is_valid_email_returns_true_if_email_valid(self):
+        """
+            Test the function returns true if the email supplied
+            is valid
+        """
+        test_email = "iamvalid@domain.com"
+        output = self.is_valid_email(test_email)
+
+        self.assertTrue(output is True)
+    
+    def test_function_is_valid_email_returns_false_if_email_invalid(self):
+        """
+            Test the function returns true if the email supplied
+            is valid
+        """
+        test_email = "iamvalid@domain,com"
+        output = self.is_valid_email(test_email)
+
+        self.assertTrue(output is False)
 
     def tearDown(self):
         """teardown all initialized variables."""

@@ -1120,6 +1120,27 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertEqual(expected_output['status'], res.status_code)
         self.assertEqual(expected_output['error'], res.json['error'])
     
+    def test_endpoint_post_activate_account_returns_error_if_email_incorrect_format(self):
+        """
+            Test API endpoint returns error if supplied email address is in incorrect
+            format
+        """
+        incorrect_email = "iaminvalid@me,com"
+        expected_output = {
+            "status":400,
+            "error":"Supplied email seems to be in incorrect format: {}".format(incorrect_email)
+        }
+        
+        res = self.client.post(
+            'api/v1/members/activate_account',
+            data = json.dumps({"email": incorrect_email }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('error', res.json)
+        self.assertEqual(expected_output['status'], res.status_code)
+        self.assertEqual(expected_output['error'], res.json['error'])
+    
     def test_endpoint_post_activate_account_returns_error_if_member_record_not_found(self):
         """Test API endpoint returns error if request fields are empty """
 

@@ -9,7 +9,7 @@ from app import mail
 from app.api.v1.models import   Member, member_schema, members_schema, \
                                 MembershipClass, member_classes_schema
 from app.api.v1.utils import    check_is_empty, validate_request_data, \
-                                async_task
+                                async_task, is_valid_email
 
 SALT_ACTIVATE_ACCOUNT = 'new-account-activation-salt'
 
@@ -581,8 +581,11 @@ def activate_account_validate_request_data(req_data):
         return checked_data
     
     # check that the email is in email format.
-    # EMAIL_REGEX = ''
-    # commented out for now. will attend to this later
+    if not is_valid_email(checked_data['email']):
+        return {
+            "status":400,
+            "error":"Supplied email seems to be in incorrect format: {}".format(checked_data['email'])
+        }
 
     return checked_data
 

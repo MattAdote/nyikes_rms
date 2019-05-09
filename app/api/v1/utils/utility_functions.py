@@ -1,3 +1,7 @@
+import re
+
+from .utility_constants import EMAIL_PATTERN
+
 allowed_content_types = ['application/x-www-form-urlencoded', 'application/json', 'multipart/form-data']
 
 def validate_request_data(request_data, required_fields_checklist):
@@ -162,3 +166,12 @@ def endpoint_error_response(request_data, processed_data):
         response = invalid_param(request_data, processed_data)
 
         return response
+
+def is_valid_email(email):
+    """
+        returns True or False if the supplied email
+        is a valid email or not.
+    """
+    if re.match(EMAIL_PATTERN, email) != None:
+        return True
+    return False
