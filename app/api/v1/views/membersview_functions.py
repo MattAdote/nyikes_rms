@@ -515,6 +515,21 @@ def update_member_record(properties_to_update, record_public_id):
         }
     # 5. All ok. Update the member object properties
     for key, value in properties_to_update.items():
+        # check that username and email are unique
+        if key in ['username', 'email']:
+            if key is 'username':
+                existing_member = Member.query.filter_by(username=value).first()
+            else:
+                existing_member = Member.query.filter_by(email=value).first()
+
+            if existing_member is not None:
+                if existing_member.public_id != record_public_id:
+                    # the public id of existing record is for another record
+                    return {
+                        "status":400,
+                        "error": "Cannot set {}: '{}' already exists.".format(key, value)
+                    }
+        # store hash of the given password
         if key == 'password':
             value = generate_password_hash(value, method='sha256')
         setattr(member, key, value)

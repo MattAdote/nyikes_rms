@@ -239,7 +239,219 @@ class TestMemberViewFunctions(unittest.TestCase):
         
         self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
         self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+    
+    def test_function_update_member_record_returns_error_if_username_not_unique(self):
+        """ 
+            Tests that the function to update a member record returns an error if the
+            username property supplied is not unique
+        """
+        
+        new_member = {
+            "first_name": "LaKwanza",
+            "middle_name": "ZaKati",
+            "last_name": "Mwishowe",
+            "email": "newmember@domain.com",
+            "phone_number": "0700987654",
+            "class_name": "Test Class A B C"
+        }
+        existing_username = {"username":"Niko"}
+        expected_output = {
+            "status": 400,
+            "error": "Cannot set username: '{}' already exists.".format(existing_username['username'])
+        }
+        with self.app.test_request_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class.save()
+            # 2. create new member 1
+            existing_member = self.save_new_member(self.input_member_record)
+            # 3. set username for new member
+            output = self.update_member_record(existing_username, existing_member['data']['public_id'])
+            # 4. create second new member
+            new_member = self.save_new_member(new_member)
+            # 5. test the update function - set username of new member 2 = new member 1's username
+            output = self.update_member_record(existing_username, new_member['data']['public_id'])
 
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+    
+    def test_function_update_member_record_returns_error_if_email_not_unique(self):
+        """ 
+            Tests that the function to update a member record returns an error if the
+            username property supplied is not unique
+        """
+        
+        new_member_info = {
+            "first_name": "LaKwanza",
+            "middle_name": "ZaKati",
+            "last_name": "Mwishowe",
+            "email": "newmember@domain.com",
+            "phone_number": "0700987654",
+            "class_name": "Test Class A B C"
+        }
+        existing_email = {"email":self.input_member_record['email']}
+        expected_output = {
+            "status": 400,
+            "error": "Cannot set email: '{}' already exists.".format(existing_email['email'])
+        }
+        with self.app.test_request_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class.save()
+            # 2. create new member 1
+            existing_member = self.save_new_member(self.input_member_record)
+            # 3. create second new member
+            new_member = self.save_new_member(new_member_info)
+            # 4. test the update function - set email of new member = existing member's email
+            output = self.update_member_record({"email":existing_member['data']['email']}, new_member['data']['public_id'])
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+    
+    def test_function_update_member_record_returns_record_if_username_for_existing_record(self):
+        """ 
+            Tests that the function to update a member record runs normally and doesn't
+            break if a new username was supplied which is equal to the existing username
+        """
+        
+        existing_username = {"username":"Niko"}
+        expected_output = {
+            "status": 200,
+            "data" : {
+                # plus input member record attributes
+                # and plus the username
+            }
+        }
+        expected_output['data'].update(self.input_member_record)
+        expected_output['data'].update(existing_username)
+        with self.app.test_request_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class.save()
+            # 2. create new member
+            existing_member = self.save_new_member(self.input_member_record)
+            # 3. update username for new member
+            output_0 = self.update_member_record(existing_username, existing_member['data']['public_id'])
+            # 4. update username for new member with same username
+            output = self.update_member_record(existing_username, existing_member['data']['public_id'])
+            
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('data', output, 'data key is missing in output')
+        self.assertIn('public_id', output['data'], 'public_id key missing in output.data')
+        self.assertIn('username', output['data'], 'username key missing in output.data')
+
+        self.assertEqual(output['status'], expected_output['status'], 'status returned Not status expected ')
+        self.assertEqual(output['data']['first_name'], expected_output['data']['first_name'], 'first_name returned Not first_name supplied ')
+        self.assertEqual(output['data']['middle_name'], expected_output['data']['middle_name'], 'middle_name supplied Not middle_name returned')
+        self.assertEqual(output['data']['last_name'], expected_output['data']['last_name'], 'last_name returned Not last_name supplied')
+        self.assertEqual(output['data']['email'], expected_output['data']['email'], 'email returned Not email supplied')
+        self.assertEqual(output['data']['phone_number'], expected_output['data']['phone_number'], 'monthly_contrib_amount returned Not monthly_contrib_amount supplied')
+        self.assertEqual(output['data']['class_name'], expected_output['data']['class_name'], 'class_name returned Not class_name supplied')
+    
+    def test_function_update_member_record_returns_record_if_new_username_for_existing_record_set(self):
+        """ 
+            Tests that the function to update a member record runs normally and doesn't
+            break if a new username was supplied which is equal to the existing username
+        """
+        
+        existing_username = {"username":"Niko"}
+        new_username = {"username":"NikoNewMsee"}
+        expected_output = {
+            "status": 200,
+            "data" : {
+                # plus input member record attributes
+                # and plus the username
+            }
+        }
+        expected_output['data'].update(self.input_member_record)
+        expected_output['data'].update(new_username)
+        with self.app.test_request_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class.save()
+            # 2. create new member
+            existing_member = self.save_new_member(self.input_member_record)
+            # 3. update username for new member
+            output_0 = self.update_member_record(existing_username, existing_member['data']['public_id'])
+            # 4. update username for new member with new username
+            output = self.update_member_record(new_username, existing_member['data']['public_id'])
+            
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('data', output, 'data key is missing in output')
+        self.assertIn('public_id', output['data'], 'public_id key missing in output.data')
+        self.assertIn('username', output['data'], 'username key missing in output.data')
+
+        self.assertEqual(output['status'], expected_output['status'], 'status returned Not status expected ')
+        self.assertEqual(output['data']['first_name'], expected_output['data']['first_name'], 'first_name returned Not first_name supplied ')
+        self.assertEqual(output['data']['middle_name'], expected_output['data']['middle_name'], 'middle_name supplied Not middle_name returned')
+        self.assertEqual(output['data']['last_name'], expected_output['data']['last_name'], 'last_name returned Not last_name supplied')
+        self.assertEqual(output['data']['email'], expected_output['data']['email'], 'email returned Not email supplied')
+        self.assertEqual(output['data']['phone_number'], expected_output['data']['phone_number'], 'monthly_contrib_amount returned Not monthly_contrib_amount supplied')
+        self.assertEqual(output['data']['class_name'], expected_output['data']['class_name'], 'class_name returned Not class_name supplied')
+        self.assertEqual(output['data']['username'], expected_output['data']['username'], 'username returned Not username supplied')
+        
+    def test_function_update_member_record_returns_record_if_email_for_existing_record(self):
+        """ 
+            Tests that the function to update a member record runs normally and doesn't
+            break if a new email was supplied which is equal to the existing email
+        """
+        
+        existing_email = {"email":self.input_member_record['email']}
+        expected_output = {
+            "status": 200,
+            "data" : {
+                # plus input member record attributes
+            }
+        }
+        expected_output['data'].update(self.input_member_record)
+        with self.app.test_request_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class.save()
+            # 2. create new member
+            existing_member = self.save_new_member(self.input_member_record)
+            # 3. update email for new member with member's own existing email
+            output = self.update_member_record(existing_email, existing_member['data']['public_id'])
+            
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, 'status key missing in output')
+        self.assertIn('data', output, 'data key is missing in output')
+        self.assertIn('public_id', output['data'], 'public_id key missing in output.data')
+        self.assertIn('username', output['data'], 'username key missing in output.data')
+
+        self.assertEqual(output['status'], expected_output['status'], 'status returned Not status expected ')
+        self.assertEqual(output['data']['first_name'], expected_output['data']['first_name'], 'first_name returned Not first_name supplied ')
+        self.assertEqual(output['data']['middle_name'], expected_output['data']['middle_name'], 'middle_name supplied Not middle_name returned')
+        self.assertEqual(output['data']['last_name'], expected_output['data']['last_name'], 'last_name returned Not last_name supplied')
+        self.assertEqual(output['data']['email'], expected_output['data']['email'], 'email returned Not email supplied')
+        self.assertEqual(output['data']['phone_number'], expected_output['data']['phone_number'], 'monthly_contrib_amount returned Not monthly_contrib_amount supplied')
+        self.assertEqual(output['data']['class_name'], expected_output['data']['class_name'], 'class_name returned Not class_name supplied')
+        
     def test_function_update_member_record_returns_updated_record_with_username(self):
         """ 
             Tests that the function to update a member record returns the
