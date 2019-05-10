@@ -404,16 +404,21 @@ def process_uploaded_members_file(uploaded_members_file, expected_sheet_name):
     for index, row in ws_new_member_records.iterrows():
         # first convert phone_number field to string
         row['phone_number'] = str(row['phone_number'])
-        # next, send to storage
-        db_response = save_member_record(row.to_dict())
-        # record the response against the record
-        if 'error' in db_response:
-            db_import_result.append(db_response['error'])
-        elif 'warning' in db_response:
-            db_import_result.append('Success but be advised: {}'.format(db_response['warning']))
+        # next, validate the row data
+        validation_response = members_validate_request_data(row.to_dict())
+        if 'error' not in validation_response:
+            # data is valid, send to storage
+            db_response = save_member_record(row.to_dict())
+            # record the response against the record
+            if 'error' in db_response:
+                db_import_result.append(db_response['error'])
+            elif 'warning' in db_response:
+                db_import_result.append('Success but be advised: {}'.format(db_response['warning']))
+            else:
+                db_import_result.append('Success')
         else:
-            db_import_result.append('Success')
-    
+            db_import_result.append(validation_response['error'])
+
     ws_new_member_records['DB Import Result'] = db_import_result
 
     # so now we start on preparing the df for output
