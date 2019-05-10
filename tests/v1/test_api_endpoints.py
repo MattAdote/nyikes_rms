@@ -621,6 +621,55 @@ class TestApiEndpoints(unittest.TestCase):
 
         self.assertIn('error', res_3.json)
         self.assertEqual(400, res_3.status_code)
+    
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_post_members_returns_error_if_email_format_incorrect(self):
+        """Test API endpoint returns error if email address is of incorrect format"""
+        
+        expected_output = {
+            "status":400,
+            "error":"Email address seems to be in incorrect format: {}"
+        }
+
+        # create membership class
+        input_1 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }
+        
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+        # make a call to POST /settings/config/members
+        res_1 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_1),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to POST /members
+        input_2 = {
+            "class_name" : res_1.json['data']['class_name'],
+            "first_name" : "Test First Name",
+            "middle_name" : "Jaribu la kati", 
+            "last_name" : "Last but not Least", 
+            "email" : "invalid-email@testdomain,com", 
+            "phone_number" : "0700123456"
+        }
+
+        res_2 = self.client.post(
+            'api/v1/members',
+            data = json.dumps(input_2),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        self.assertIn('error', res_2.json)
+        self.assertEqual(expected_output['status'], res_2.status_code)
+        self.assertEqual(expected_output['error'].format(input_2['email']), res_2.json['error'])
 
     def test_endpoint_post_members_returns_new_member_record_with_id(self):
         """Test API endpoint returns newly created member record with id """

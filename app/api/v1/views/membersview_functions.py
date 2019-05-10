@@ -168,8 +168,21 @@ def members_validate_request_data(req_data):
     # append non required fields dictionary to sanitized_data list
     sanitized_data.append(dict_non_req_fields)
 
-    # send sanitized_data list to actual validation function and return response
-    return validate_request_data(sanitized_data, req_fields)
+    # send sanitized_data list to actual validation function
+    checked_data = validate_request_data(sanitized_data, req_fields)
+
+    # return validation findings if there was an error
+    if 'error' in checked_data:
+        return checked_data
+    
+    # check that the email is in email format.
+    if not is_valid_email(checked_data['email']):
+        return {
+            "status":400,
+            "error":"Email address seems to be in incorrect format: {}".format(checked_data['email'])
+        }
+
+    return checked_data
 
 def generate_members_file():
     """
