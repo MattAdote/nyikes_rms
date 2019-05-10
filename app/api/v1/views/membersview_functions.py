@@ -168,8 +168,21 @@ def members_validate_request_data(req_data):
     # append non required fields dictionary to sanitized_data list
     sanitized_data.append(dict_non_req_fields)
 
-    # send sanitized_data list to actual validation function and return response
-    return validate_request_data(sanitized_data, req_fields)
+    # send sanitized_data list to actual validation function
+    checked_data = validate_request_data(sanitized_data, req_fields)
+
+    # return validation findings if there was an error
+    if 'error' in checked_data:
+        return checked_data
+    
+    # check that the email is in email format.
+    if not is_valid_email(checked_data['email']):
+        return {
+            "status":400,
+            "error":"Email address seems to be in incorrect format: {}".format(checked_data['email'])
+        }
+
+    return checked_data
 
 def generate_members_file():
     """
@@ -391,16 +404,21 @@ def process_uploaded_members_file(uploaded_members_file, expected_sheet_name):
     for index, row in ws_new_member_records.iterrows():
         # first convert phone_number field to string
         row['phone_number'] = str(row['phone_number'])
-        # next, send to storage
-        db_response = save_member_record(row.to_dict())
-        # record the response against the record
-        if 'error' in db_response:
-            db_import_result.append(db_response['error'])
-        elif 'warning' in db_response:
-            db_import_result.append('Success but be advised: {}'.format(db_response['warning']))
+        # next, validate the row data
+        validation_response = members_validate_request_data(row.to_dict())
+        if 'error' not in validation_response:
+            # data is valid, send to storage
+            db_response = save_member_record(row.to_dict())
+            # record the response against the record
+            if 'error' in db_response:
+                db_import_result.append(db_response['error'])
+            elif 'warning' in db_response:
+                db_import_result.append('Success but be advised: {}'.format(db_response['warning']))
+            else:
+                db_import_result.append('Success')
         else:
-            db_import_result.append('Success')
-    
+            db_import_result.append(validation_response['error'])
+
     ws_new_member_records['DB Import Result'] = db_import_result
 
     # so now we start on preparing the df for output
@@ -520,6 +538,12 @@ def update_member_record(properties_to_update, record_public_id):
             if key is 'username':
                 existing_member = Member.query.filter_by(username=value).first()
             else:
+                # check that the email is in email format.
+                if not is_valid_email(value):
+                    return {
+                        "status":400,
+                        "error":"Email address seems to be in incorrect format: {}".format(value)
+                    }
                 existing_member = Member.query.filter_by(email=value).first()
 
             if existing_member is not None:

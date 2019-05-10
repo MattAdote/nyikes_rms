@@ -288,7 +288,7 @@ class TestMemberViewFunctions(unittest.TestCase):
     def test_function_update_member_record_returns_error_if_email_not_unique(self):
         """ 
             Tests that the function to update a member record returns an error if the
-            username property supplied is not unique
+            email property supplied is not unique
         """
         
         new_member_info = {
@@ -314,6 +314,39 @@ class TestMemberViewFunctions(unittest.TestCase):
             new_member = self.save_new_member(new_member_info)
             # 4. test the update function - set email of new member = existing member's email
             output = self.update_member_record({"email":existing_member['data']['email']}, new_member['data']['public_id'])
+
+        # Make the assertions
+        assert type(output) == dict
+        self.assertIn('status', output, "status_code key is missing!")
+        self.assertIn('error', output, "error key is missing!")
+        
+        self.assertNotEqual(output['status'], "", "No status_code information provided")
+        self.assertNotEqual(output['error'], "", "No error information provided")
+
+        self.assertIsInstance(output['error'], str, "Error info not string data")
+        
+        self.assertEqual(output['status'], expected_output['status'], "Output received does not match expected")
+        self.assertEqual(output['error'], expected_output['error'], "Output received does not match expected")
+    
+    def test_function_update_member_record_returns_error_if_email_format_incorrect(self):
+        """ 
+            Tests that the function to update a member record returns an error if the
+            email format is incorrect
+        """
+        
+        properties_to_update = {"email":"invalid@domain,com"}
+        expected_output = {
+            "status": 400,
+            "error": "Email address seems to be in incorrect format: {}".format(properties_to_update['email'])
+        }
+        with self.app.test_request_context():
+            # 1. create new membership_class record
+            obj_membership_class = MembershipClass(class_name=self.input_member_record['class_name'], monthly_contrib_amount=1450.00)
+            obj_membership_class.save()
+            # 2. create new member record
+            new_member = self.save_new_member(self.input_member_record)
+            # 3. test the update function - set email of new member = invalid email
+            output = self.update_member_record(properties_to_update, new_member['data']['public_id'])
 
         # Make the assertions
         assert type(output) == dict
