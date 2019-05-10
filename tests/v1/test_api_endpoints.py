@@ -1336,6 +1336,141 @@ class TestApiEndpoints(unittest.TestCase):
         self.assertEqual(expected_output['status'], res.status_code)
         self.assertEqual(expected_output['data'].format(res_2.json['data']['email']), res.json['data'])
 
+    def test_endpoint_post_reset_password_returns_json(self):
+        """Test API endpoint is reachable and returns json"""
+        
+        res = self.client.post('api/v1/members/reset_password')       
+        
+        self.assertTrue(res.is_json, "Json not returned.")
+    
+    def test_endpoint_post_reset_password_returns_error_on_incorrect_content_type(self):
+        """Test API endpoint returns error if incorrect or no content type given """
+        res = self.client.post('api/v1/members/reset_password')
+        
+        self.assertIn('error', res.json, 'Error not Returned')
+
+        self.assertEqual(400, res.status_code)
+
+    def test_endpoint_post_reset_password_returns_error_if_required_field_empty(self):
+        """Test API endpoint returns error if request fields are empty """
+
+        expected_output = {
+            "status":400,
+            "error":"Required field(s) empty: email"
+        }
+
+        res = self.client.post(
+            'api/v1/members/reset_password',
+            data = json.dumps({"email": "" }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('error', res.json)
+        self.assertEqual(expected_output['status'], res.status_code)
+        self.assertEqual(expected_output['error'], res.json['error'])
+
+    def test_endpoint_post_reset_password_returns_error_if_email_incorrect_format(self):
+        """
+            Test API endpoint returns error if supplied email address is in incorrect
+            format
+        """
+        incorrect_email = "iaminvalid@me,com"
+        expected_output = {
+            "status":400,
+            "error":"Supplied email seems to be in incorrect format: {}".format(incorrect_email)
+        }
+        
+        res = self.client.post(
+            'api/v1/members/reset_password',
+            data = json.dumps({"email": incorrect_email }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('error', res.json)
+        self.assertEqual(expected_output['status'], res.status_code)
+        self.assertEqual(expected_output['error'], res.json['error'])
+
+    def test_endpoint_post_reset_password_returns_error_if_member_record_not_found(self):
+        """Test API endpoint returns error if request fields are empty """
+
+        member_email = "notexist@domain.com"
+
+        expected_output = {
+            "status": 404,
+            "error" : "No member record found for email: {}".format(member_email)
+        }
+
+        res = self.client.post(
+            'api/v1/members/reset_password',
+            data = json.dumps({"email": "{}".format(member_email) }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('error', res.json)
+        self.assertEqual(expected_output['status'], res.status_code)
+        self.assertEqual(expected_output['error'], res.json['error'])
+    
+    @pytest.mark.usefixtures("getLoggedInSuperuser")
+    def test_endpoint_post_reset_password_returns_message_if_reset_password_email_sent(self):
+        """
+            Test that the endpoint returns a message indicating that the
+            reset password email has been sent
+        """
+
+        expected_output = {
+            "status":200,
+            "data":"Please check your mailbox at {} for the reset password link"
+        }
+        headers = {
+                'Content-Type' : 'application/json',
+                'Authorization':  "Bearer {}".format(self.loggedInSuperuser['access_token']),
+                'X-NYIKES-RMS-User' : self.loggedInSuperuser['username']
+        }
+
+        # create membership class
+        input_1 = {
+            "class_name": "Test Class ABC",
+            "monthly_contrib_amount": 1550.00
+        }
+        # make a call to POST /settings/config/members
+        res_1 = self.client.post(
+            'api/v1/settings/config/members',
+            data = json.dumps(input_1),
+            headers = headers,
+            content_type = 'application/json'
+        )
+
+        # make a call to POST /members
+        input_2 = {
+            "class_name" : res_1.json['data']['class_name'],
+            "first_name" : "Test First Name",
+            "middle_name" : "Jaribu la kati", 
+            "last_name" : "Test last name", 
+            "email" : "ianadote@gmail.com", 
+            "phone_number" : "0700123456"
+        }
+        res_2 = self.client.post(
+            'api/v1/members',
+            data = json.dumps(input_2),
+            headers = headers,
+            content_type = 'application/json'
+        )
+        
+        # now make a call to the endpoint and supply
+        # the email of an existing user
+        res_3 = self.client.post(
+            'api/v1/members/reset_password',
+            data = json.dumps({"email": "{}".format(res_2.json['data']['email']) }),
+            content_type = 'application/json'
+        )
+
+        self.assertIn('status', res_3.json)
+        self.assertIn('data', res_3.json)
+
+        self.assertEqual(expected_output['status'], res_3.status_code)
+        self.assertEqual(expected_output['data'].format(res_2.json['data']['email']), res_3.json['data'])
+    
+
     def tearDown(self):
         """teardown all initialized variables."""
         

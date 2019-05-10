@@ -26,7 +26,8 @@ from . membersview_functions import activate_account_validate_request_data, \
                                     generate_members_file, get_uploaded_members_file, \
                                     process_uploaded_members_file, get_member_record, \
                                     get_activate_account_serializer, SALT_ACTIVATE_ACCOUNT, \
-                                    update_member_record, send_email, send_account_activation_email
+                                    update_member_record, send_email, send_account_activation_email, \
+                                    generate_reset_password_link
 
 # Define blueprint for members view
 members_view_blueprint = Blueprint('members_view', '__name__')
@@ -227,6 +228,43 @@ def process_activate_account_request():
                 "status":200,
                 "data":"Please check your mailbox. Instructions have been sent to your email address at {}".format(member_record['email'])
             }
+    else:
+        # return error from validation findings
+        response = endpoint_error_response(data, res_valid_data)
+
+    return make_response(jsonify(response), response['status'])
+
+@members_view_blueprint.route('/members/reset_password', methods=['POST'])
+def process_reset_password_request():
+    """ This processes a request to reset the password for a member's account"""
+    
+    # Parse the request data to check content_type is correct
+    data = parse_request(request)
+    if type(data) == dict and 'error' in data:
+        return make_response(jsonify(data), data['status'])
+
+    # check validity of request data
+    res_valid_data = activate_account_validate_request_data(data)
+
+    # process data if valid, else, return validation findings
+    if data == res_valid_data:
+        # 1. get the member record
+        member_record = get_member_record(res_valid_data['email'])
+        if 'error' in member_record:
+            return make_response(jsonify(member_record), member_record['status'])
+        # 2. dispatch the reset password email
+        reset_link = generate_reset_password_link(member_record['email'])
+        email_text_body = render_template('reset_password_email.txt', member=member_record, link=reset_link)
+        email_html_body = render_template('reset_password_email.html',member=member_record, link=reset_link)
+        send_email(
+            "NYIKES RMS: RESET PASSWORD", app.config['ADMIN_EMAILS'][0], member_record['email'],
+            email_text_body,
+            html_body=email_html_body
+        )
+        response = {
+            "status":200,
+            "data":"Please check your mailbox at {} for the reset password link".format(member_record['email'])
+        }
     else:
         # return error from validation findings
         response = endpoint_error_response(data, res_valid_data)

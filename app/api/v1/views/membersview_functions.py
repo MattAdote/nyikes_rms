@@ -12,6 +12,7 @@ from app.api.v1.utils import    check_is_empty, validate_request_data, \
                                 async_task, is_valid_email
 
 SALT_ACTIVATE_ACCOUNT = 'new-account-activation-salt'
+SALT_RESET_PASSWORD = 'reset-password-salt-aka-chumvi'
 
 def get_activate_account_serializer():
     with app.app_context():
@@ -643,4 +644,17 @@ def send_account_activation_email(member_record):
         "NYIKES RMS: ACCOUNT ACTIVATION", app.config['ADMIN_EMAILS'][0], member_record['email'],
         email_text_body,
         html_body=email_html_body
+    )
+
+def generate_reset_password_link(member_email):
+    """ 
+        Generate a reset password link for specified email
+    """
+    return url_for(
+        'members_view.process_reset_password_request',
+        token=get_activate_account_serializer().dumps(
+                member_email, 
+                salt=SALT_RESET_PASSWORD
+            ),
+        _external=True
     )
