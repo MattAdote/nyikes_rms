@@ -538,6 +538,12 @@ def update_member_record(properties_to_update, record_public_id):
             if key is 'username':
                 existing_member = Member.query.filter_by(username=value).first()
             else:
+                # check that the email is in email format.
+                if not is_valid_email(value):
+                    return {
+                        "status":400,
+                        "error":"Email address seems to be in incorrect format: {}".format(value)
+                    }
                 existing_member = Member.query.filter_by(email=value).first()
 
             if existing_member is not None:
